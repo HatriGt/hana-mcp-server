@@ -1,3 +1,5 @@
+[![MseeP Badge](https://mseep.net/pr/hatrigt-hana-mcp-server-badge.jpg)](https://mseep.ai/app/hatrigt-hana-mcp-server)
+
 # HANA Cloud MCP Server
 
 A Model Context Protocol (MCP) server implementation for SAP HANA Cloud DB integration with Cursor IDE.
