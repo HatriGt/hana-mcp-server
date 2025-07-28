@@ -1,5 +1,7 @@
 const hana = require('@sap/hana-client');
-const { logger } = require('./utils/custom-logger');
+
+// Simple logger that doesn't interfere with JSON-RPC
+const log = (msg) => console.error(`[HANA Client] ${new Date().toISOString()}: ${msg}`);
 
 /**
  * Create and configure a HANA client
@@ -24,7 +26,7 @@ async function createHanaClient(config) {
     // Connect to HANA
     await connect(connection, connectionParams);
     
-    logger.info('Successfully connected to HANA database');
+    log('Successfully connected to HANA database');
     
     // Return client wrapper with utility methods
     return {
@@ -41,7 +43,7 @@ async function createHanaClient(config) {
           statement.drop();
           return results;
         } catch (error) {
-          logger.error('Query execution error:', error);
+          log('Query execution error:', error);
           throw new Error(`Query execution failed: ${error.message}`);
         }
       },
@@ -71,10 +73,10 @@ async function createHanaClient(config) {
         return new Promise((resolve, reject) => {
           connection.disconnect(err => {
             if (err) {
-              logger.error('Error disconnecting from HANA:', err);
+              log('Error disconnecting from HANA:', err);
               reject(err);
             } else {
-              logger.info('Disconnected from HANA database');
+              log('Disconnected from HANA database');
               resolve();
             }
           });
@@ -82,7 +84,7 @@ async function createHanaClient(config) {
       }
     };
   } catch (error) {
-    logger.error('Failed to create HANA client:', error);
+    log('Failed to create HANA client:', error);
     throw error;
   }
 }

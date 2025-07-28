@@ -3,7 +3,7 @@
     "HANA Database": {
       "command": "/opt/homebrew/bin/node",
       "args": [
-        "/Users/Common/ProjectsRepo/tools/hana-mcp-server/mcp-server-simple.js"
+        "/Users/Common/ProjectsRepo/tools/hana-mcp-server/mcp-server-main.js"
       ],
       "env": {
         "HANA_HOST": "7f94bf00-5c54-40ee-8ec6-e3800940be1b.hna1.prod-eu10.hanacloud.ondemand.com",
