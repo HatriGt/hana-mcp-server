@@ -292,5 +292,3 @@ For issues and questions:
 - Check server logs for detailed error information
 
 ---
-
-**Note**: This MCP server is designed for development and testing purposes. For production use, ensure proper security measures and error handling are implemented. 
