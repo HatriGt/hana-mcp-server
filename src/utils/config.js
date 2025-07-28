@@ -93,6 +93,20 @@ class Config {
     logger.info('Configuration validation passed');
     return true;
   }
+
+  /**
+   * Get default schema from environment variables
+   */
+  getDefaultSchema() {
+    return this.config.hana.schema;
+  }
+
+  /**
+   * Check if default schema is configured
+   */
+  hasDefaultSchema() {
+    return !!this.config.hana.schema;
+  }
 }
 
 // Create default config instance

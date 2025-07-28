@@ -1,5 +1,8 @@
 /**
  * Tool definitions for HANA MCP Server
+ * 
+ * Note: For tools that accept schema_name as an optional parameter, 
+ * the HANA_SCHEMA environment variable will be used if schema_name is not provided.
  */
 
 const TOOLS = [
@@ -47,10 +50,10 @@ const TOOLS = [
       properties: {
         schema_name: {
           type: "string",
-          description: "Name of the schema to list tables from"
+          description: "Name of the schema to list tables from (optional)"
         }
       },
-      required: ["schema_name"]
+      required: []
     }
   },
   {
@@ -61,14 +64,14 @@ const TOOLS = [
       properties: {
         schema_name: {
           type: "string",
-          description: "Name of the schema containing the table"
+          description: "Name of the schema containing the table (optional)"
         },
         table_name: {
           type: "string",
           description: "Name of the table to describe"
         }
       },
-      required: ["schema_name", "table_name"]
+      required: ["table_name"]
     }
   },
   {
@@ -79,14 +82,14 @@ const TOOLS = [
       properties: {
         schema_name: {
           type: "string",
-          description: "Name of the schema containing the table"
+          description: "Name of the schema containing the table (optional)"
         },
         table_name: {
           type: "string",
           description: "Name of the table to list indexes for"
         }
       },
-      required: ["schema_name", "table_name"]
+      required: ["table_name"]
     }
   },
   {
@@ -97,7 +100,7 @@ const TOOLS = [
       properties: {
         schema_name: {
           type: "string",
-          description: "Name of the schema containing the table"
+          description: "Name of the schema containing the table (optional)"
         },
         table_name: {
           type: "string",
@@ -108,7 +111,7 @@ const TOOLS = [
           description: "Name of the index to describe"
         }
       },
-      required: ["schema_name", "table_name", "index_name"]
+      required: ["table_name", "index_name"]
     }
   },
   {
