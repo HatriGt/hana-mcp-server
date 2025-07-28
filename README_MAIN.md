@@ -1,68 +1,45 @@
-# HANA MCP Server - Main Implementation
+# HANA MCP Server
 
-A Model Context Protocol (MCP) server for SAP HANA databases that allows AI agents to interact with HANA databases through natural language.
+A Model Context Protocol (MCP) server for SAP HANA database integration with AI agents like Claude Desktop.
 
-## 🎯 Features
+## 🚀 Features
 
-### ✅ **Core Functionality**
-- **Real HANA Database Integration**: Connect to actual SAP HANA databases
-- **Environment Variable Configuration**: Secure credential management
-- **MCP Protocol Compliance**: Full JSON-RPC 2.0 implementation
-- **Claude Desktop Integration**: Works seamlessly with Claude Desktop
-- **STDIO Transport**: Optimized for AI client communication
+- **Real HANA Database Integration** - All tools execute actual SQL queries against your HANA database
+- **9 Complete Tools** - Full schema exploration and query execution capabilities
+- **Lazy Connection** - Fast startup with on-demand HANA connection
+- **Claude Desktop Ready** - Optimized for seamless integration
+- **No Mock Data** - Everything returns real data from your HANA instance
 
-### 🔧 **Available Tools**
+## 🛠️ Available Tools
 
-#### **Configuration Tools**
-- `hana_show_config` - Show HANA database configuration
-- `hana_test_connection` - Test connection to HANA database
-- `hana_show_env_vars` - Show all HANA environment variables
+1. **`hana_show_config`** - Display HANA database configuration
+2. **`hana_test_connection`** - Test actual HANA database connectivity
+3. **`hana_list_schemas`** - List all schemas in the HANA database
+4. **`hana_show_env_vars`** - Show HANA-related environment variables
+5. **`hana_list_tables`** - List all tables in a specific schema
+6. **`hana_describe_table`** - Describe table structure and columns
+7. **`hana_list_indexes`** - List all indexes for a specific table
+8. **`hana_describe_index`** - Describe index structure and details
+9. **`hana_execute_query`** - Execute custom SQL queries against HANA
 
-#### **Schema Exploration Tools**
-- `hana_list_schemas` - List all schemas in the database
-- `hana_list_tables` - List tables in a specific schema
-- `hana_describe_table` - Describe table structure with columns and constraints
+## ⚡ Quick Start
 
-#### **Index Management Tools**
-- `hana_list_indexes` - List indexes for a table
-- `hana_describe_index` - Describe index details and columns
-
-#### **Query Tools** (from query.js)
-- Execute custom SQL queries
-- Query with parameters
-- Result formatting
-
-#### **Admin Tools** (from admin.js)
-- Database administration tasks
-- User management
-- System monitoring
-
-## 🚀 Quick Start
-
-### 1. **Setup**
+### 1. Install Dependencies
 ```bash
-# Run the setup script
-./setup-main.sh
+npm install
 ```
 
-### 2. **Configure Claude Desktop**
-```bash
-# Copy the configuration template
-cp claude_config_main.json ~/.config/claude/claude_desktop_config.json
+### 2. Configure Claude Desktop
 
-# Edit with your HANA details
-nano ~/.config/claude/claude_desktop_config.json
-```
+Copy the contents of `claude_config_main.json` to your Claude Desktop configuration file:
 
-### 3. **Configuration Example**
 ```json
 {
   "mcpServers": {
     "HANA Database": {
       "command": "/opt/homebrew/bin/node",
       "args": [
-        "/Users/Common/ProjectsRepo/tools/hana-mcp-server/bin/cli.js",
-        "start"
+        "/Users/Common/ProjectsRepo/tools/hana-mcp-server/mcp-server-main.js"
       ],
       "env": {
         "HANA_HOST": "your-hana-host.com",
@@ -70,212 +47,134 @@ nano ~/.config/claude/claude_desktop_config.json
         "HANA_USER": "your-username",
         "HANA_PASSWORD": "your-password",
         "HANA_SCHEMA": "your-schema",
-        "HANA_SSL": "true",
-        "MCP_TRANSPORT": "stdio",
-        "LOG_LEVEL": "info"
+        "HANA_SSL": "true"
       }
     }
   }
 }
 ```
 
-### 4. **Restart Claude Desktop**
+### 3. Update Configuration
+Replace the environment variables in the config with your actual HANA database details:
+- `HANA_HOST` - Your HANA database host
+- `HANA_PORT` - Database port (default: 443)
+- `HANA_USER` - Database username
+- `HANA_PASSWORD` - Database password
+- `HANA_SCHEMA` - Default schema
+- `HANA_SSL` - SSL enabled (true/false)
 
-### 5. **Test the Tools**
-Try these commands in Claude Desktop:
-- "Show my HANA database configuration"
-- "Test the connection to my HANA database"
-- "List all schemas in the database"
-- "List tables in the SYSTEM schema"
+### 4. Restart Claude Desktop
+Restart Claude Desktop to load the new MCP server configuration.
 
 ## 🔧 Environment Variables
 
 | Variable | Description | Required | Default |
 |----------|-------------|----------|---------|
 | `HANA_HOST` | HANA database host | Yes | - |
-| `HANA_PORT` | HANA database port | No | 443 |
-| `HANA_USER` | HANA database username | Yes | - |
-| `HANA_PASSWORD` | HANA database password | Yes | - |
-| `HANA_SCHEMA` | HANA database schema | No | - |
-| `HANA_SSL` | Enable SSL connection | No | true |
-| `MCP_TRANSPORT` | Transport type | No | stdio |
-| `LOG_LEVEL` | Logging level | No | info |
+| `HANA_PORT` | Database port | No | 443 |
+| `HANA_USER` | Database username | Yes | - |
+| `HANA_PASSWORD` | Database password | Yes | - |
+| `HANA_SCHEMA` | Default schema | No | - |
+| `HANA_SSL` | Enable SSL | No | true |
+| `HANA_ENCRYPT` | Enable encryption | No | true |
+| `HANA_VALIDATE_CERT` | Validate SSL certificate | No | true |
 
 ## 📁 Project Structure
 
 ```
 hana-mcp-server/
+├── mcp-server-main.js          # Main MCP server (working implementation)
+├── claude_config_main.json     # Claude Desktop configuration
 ├── src/
-│   ├── server.js              # Main server with STDIO transport
-│   ├── mcp-adapter.js         # MCP protocol adapter
-│   ├── hana-client.js         # HANA database client
-│   ├── tools/
-│   │   ├── index.js           # Tool registration
-│   │   ├── config.js          # Configuration tools
-│   │   ├── schema.js          # Schema exploration tools
-│   │   ├── query.js           # Query execution tools
-│   │   └── admin.js           # Administrative tools
-│   └── utils/
-│       ├── config.js          # Configuration loading
-│       └── logger.js          # Logging utilities
-├── bin/
-│   └── cli.js                 # Command-line interface
-├── POC/                       # Proof of Concept implementations
-├── claude_config_main.json    # Claude Desktop configuration
-├── setup-main.sh              # Setup script
-└── README_MAIN.md             # This file
+│   ├── hana-client.js          # HANA database client
+│   ├── tools/                  # Tool implementations
+│   └── utils/                  # Utilities and logging
+├── POC/                        # Proof of Concept files
+│   ├── simplehanamcp/          # Original working POC
+│   └── hanamcpwithparams/      # Environment variable POC
+└── README_MAIN.md              # This file
 ```
 
-## 🔄 Key Improvements from POC
+## 🎯 Usage Examples
 
-### **Protocol Compliance**
-- ✅ Correct MCP method names (`tools/call` instead of `tools/execute`)
-- ✅ Proper response format with `content` array
-- ✅ Correct schema format (`inputSchema` instead of `parameters`)
-- ✅ Added `initialize` and `notifications/initialized` handlers
+### Test Connection
+```
+Test my HANA database connection
+```
 
-### **Process Management**
-- ✅ Process persistence with `setInterval()` and `process.stdin.resume()`
-- ✅ Proper signal handling (SIGINT, SIGTERM)
-- ✅ Graceful shutdown and cleanup
+### List Schemas
+```
+Show me all schemas in the HANA database
+```
 
-### **Environment Variables**
-- ✅ Secure credential passing through environment variables
-- ✅ Configuration validation and error handling
-- ✅ Debug tools for environment inspection
+### Explore Tables
+```
+List all tables in schema 'MY_SCHEMA'
+```
 
-### **Real Database Integration**
-- ✅ Actual HANA database queries
-- ✅ Connection testing and validation
-- ✅ Error handling for database operations
+### Describe Table
+```
+Describe the structure of table 'CUSTOMERS' in schema 'SALES'
+```
 
-## 🧪 Testing
+### Execute Custom Query
+```
+Show me all records from the ATOM_DB_FINANCE_CLEARINGLOG table that were cleared last Friday
+```
 
-### **Manual Testing**
+## 🔍 Key Improvements
+
+### From POC to Production
+- **Real HANA Integration** - All tools use actual SQL queries
+- **Lazy Connection** - Fast startup, connects only when needed
+- **Complete Tool Set** - 9 tools covering all major use cases
+- **Error Handling** - Proper error messages and fallbacks
+- **Claude Desktop Optimized** - No startup delays or timeouts
+
+### Technical Features
+- **JSON-RPC 2.0 Compliant** - Full MCP protocol support
+- **STDIO Transport** - Direct integration with Claude Desktop
+- **Process Persistence** - Server stays alive throughout session
+- **Custom Logging** - No interference with JSON-RPC communication
+- **Parameter Support** - Prepared statements for secure queries
+
+## 🚨 Troubleshooting
+
+### Server Not Visible in Claude Desktop
+1. Check that the Node.js path is correct in the config
+2. Ensure the server file path is absolute
+3. Verify all environment variables are set
+
+### Tools Not Available
+1. Restart Claude Desktop after configuration changes
+2. Check server logs for initialization errors
+3. Verify HANA connection details
+
+### Connection Errors
+1. Verify HANA host, port, and credentials
+2. Check network connectivity to HANA database
+3. Ensure SSL settings match your HANA configuration
+
+## 📝 Development
+
+### Adding New Tools
+1. Add tool implementation to `toolImplementations` object
+2. Add tool definition to `tools` array
+3. Test with Claude Desktop
+
+### Testing
 ```bash
+# Test server startup
+node mcp-server-main.js
+
 # Test with environment variables
-HANA_HOST="test-host.com" \
-HANA_PORT="443" \
-HANA_USER="testuser" \
-HANA_PASSWORD="testpass" \
-HANA_SCHEMA="TEST" \
-HANA_SSL="true" \
-MCP_TRANSPORT="stdio" \
-node bin/cli.js start
+HANA_HOST=your-host HANA_USER=your-user HANA_PASSWORD=your-pass node mcp-server-main.js
 ```
 
-### **Connection Testing**
-```bash
-# Test HANA connection
-HANA_HOST="your-host" \
-HANA_USER="your-user" \
-HANA_PASSWORD="your-password" \
-node bin/cli.js test-connection
-```
+## 📄 License
 
-## 🔍 Debugging
+This project is designed for integration with SAP HANA databases and follows the Model Context Protocol specification.
 
-### **Common Issues**
+## 🤝 Contributing
 
-1. **"Missing required HANA configuration"**
-   - Ensure all required environment variables are set
-   - Check Claude Desktop configuration file
-
-2. **"Connection failed"**
-   - Verify HANA database is accessible
-   - Check network connectivity
-   - Validate credentials
-
-3. **"Tool not found"**
-   - Ensure server is running with STDIO transport
-   - Check tool registration in `src/tools/index.js`
-
-### **Debug Tools**
-- Use `hana_show_config` to verify configuration
-- Use `hana_test_connection` to test database connectivity
-- Use `hana_show_env_vars` to inspect environment variables
-
-## 🔒 Security
-
-- **Environment Variables**: Credentials passed securely through environment variables
-- **Password Hiding**: Passwords are hidden in logs and responses
-- **SSL Support**: Encrypted connections to HANA database
-- **Read-Only Mode**: Optional read-only mode for safety
-
-## 📚 Usage Examples
-
-### **Schema Exploration**
-```
-User: "List all schemas in my HANA database"
-Claude: [Uses hana_list_schemas tool]
-
-User: "Show me the structure of the CUSTOMERS table in the SALES schema"
-Claude: [Uses hana_describe_table tool]
-```
-
-### **Connection Testing**
-```
-User: "Test my HANA database connection"
-Claude: [Uses hana_test_connection tool]
-
-User: "Show my current HANA configuration"
-Claude: [Uses hana_show_config tool]
-```
-
-### **Index Management**
-```
-User: "List all indexes on the ORDERS table"
-Claude: [Uses hana_list_indexes tool]
-
-User: "Describe the PK_ORDERS index"
-Claude: [Uses hana_describe_index tool]
-```
-
-## 🎯 Success Criteria
-
-✅ **Claude Desktop Integration**
-- Claude Desktop can start the MCP server
-- Tools appear in Claude Desktop interface
-- Tools execute successfully
-
-✅ **Real Database Integration**
-- Connects to actual HANA database
-- Executes real queries
-- Returns actual data
-
-✅ **Protocol Compliance**
-- Proper MCP protocol implementation
-- Correct JSON-RPC 2.0 formatting
-- Process persistence and stability
-
-✅ **Configuration Management**
-- Environment variables work correctly
-- Configuration validation functions
-- Secure credential handling
-
-## 🔄 Next Steps
-
-1. **Enhanced Features**
-   - Add more sophisticated query tools
-   - Implement connection pooling
-   - Add performance monitoring
-
-2. **Security Enhancements**
-   - Add connection encryption
-   - Implement user authentication
-   - Add audit logging
-
-3. **Documentation**
-   - Create user guides
-   - Add troubleshooting guides
-   - Document advanced features
-
-## 📝 Notes
-
-- This implementation builds on the successful POC learnings
-- All tools use the correct MCP response format
-- Environment variables provide secure configuration
-- Real HANA database integration is fully functional
-- Claude Desktop integration is tested and working
-
-The main implementation is now ready for production use with real HANA databases! 
+This implementation provides a complete, working HANA MCP server that can be extended with additional tools as needed. 
