@@ -1,0 +1,37 @@
+{
+  "name": "hana-mcp-server",
+  "version": "0.1.0",
+  "description": "Model Context Protocol server for SAP HANA databases",
+  "main": "src/index.js",
+  "bin": {
+    "hana-mcp-server": "./bin/cli.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "jest"
+  },
+  "keywords": [
+    "sap",
+    "hana",
+    "mcp",
+    "database",
+    "ai",
+    "model",
+    "context",
+    "protocol"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@hapi/hapi": "^21.3.2",
+    "@sap/hana-client": "^2.17.22",
+    "commander": "^11.1.0",
+    "dotenv": "^16.3.1",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2"
+  }
+}

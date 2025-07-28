@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "HANA Database": {
+      "command": "/opt/homebrew/bin/node",
+      "args": [
+        "/Users/Common/ProjectsRepo/tools/hana-mcp-server/bin/cli.js",
+        "start"
+      ],
+      "env": {
+        "HANA_HOST": "your-hana-host.com",
+        "HANA_PORT": "443",
+        "HANA_USER": "your-username",
+        "HANA_PASSWORD": "your-password",
+        "HANA_SCHEMA": "your-schema",
+        "HANA_SSL": "true",
+        "MCP_TRANSPORT": "stdio",
+        "LOG_LEVEL": "info"
+      }
+    }
+  }
+} 
