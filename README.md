@@ -48,9 +48,10 @@ export HANA_HOST="your-hana-host.com"
 export HANA_PORT="443"
 export HANA_USER="your-username"
 export HANA_PASSWORD="your-password"
-export HANA_SCHEMA="your-schema"
+export HANA_SCHEMA="your-default-schema"  # Used as default for tools that require schema_name
 
 # Optional Configuration
+export HANA_SCHEMA="your-default-schema"  # Used as default for tools that require schema_name
 export HANA_SSL="true"
 export HANA_ENCRYPT="true"
 export HANA_VALIDATE_CERT="true"
@@ -179,6 +180,30 @@ Centralized constants and definitions:
 2. **Restart Claude Desktop**
 3. **Test the connection** using the `hana_test_connection` tool
 4. **Explore your database** using the available tools
+
+### Default Schema Behavior
+
+The server supports using a default schema from the `HANA_SCHEMA` environment variable:
+
+- **When `HANA_SCHEMA` is set**: Tools that accept optional `schema_name` parameters will use this schema if no `schema_name` is provided
+- **When `HANA_SCHEMA` is not set**: Users must explicitly provide the `schema_name` parameter for tools that require it
+
+**Examples:**
+```bash
+# With HANA_SCHEMA="MY_SCHEMA" set in environment:
+# This will use MY_SCHEMA automatically
+{"name":"hana_list_tables","arguments":{}}
+
+# This will override and use CUSTOM_SCHEMA
+{"name":"hana_list_tables","arguments":{"schema_name":"CUSTOM_SCHEMA"}}
+
+# Without HANA_SCHEMA set:
+# This will return an error asking for schema_name
+{"name":"hana_list_tables","arguments":{}}
+
+# This will work as expected
+{"name":"hana_list_tables","arguments":{"schema_name":"MY_SCHEMA"}}
+```
 
 ### Available Tools
 

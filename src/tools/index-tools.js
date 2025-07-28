@@ -3,6 +3,7 @@
  */
 
 const { logger } = require('../utils/logger');
+const { config } = require('../utils/config');
 const QueryExecutor = require('../database/query-executor');
 const Validators = require('../utils/validators');
 const Formatters = require('../utils/formatters');
@@ -14,12 +15,25 @@ class IndexTools {
   static async listIndexes(args) {
     logger.tool('hana_list_indexes', args);
     
-    const { schema_name, table_name } = args || {};
+    let { schema_name, table_name } = args || {};
+    
+    // Use default schema if not provided
+    if (!schema_name) {
+      if (config.hasDefaultSchema()) {
+        schema_name = config.getDefaultSchema();
+        logger.info(`Using default schema: ${schema_name}`);
+      } else {
+        return Formatters.createErrorResponse(
+          'Schema name is required', 
+          'Please provide schema_name parameter or set HANA_SCHEMA environment variable'
+        );
+      }
+    }
     
     // Validate required parameters
-    const validation = Validators.validateRequired(args, ['schema_name', 'table_name'], 'hana_list_indexes');
+    const validation = Validators.validateRequired(args, ['table_name'], 'hana_list_indexes');
     if (!validation.valid) {
-      return Formatters.createErrorResponse('Error: Both schema_name and table_name parameters are required', validation.error);
+      return Formatters.createErrorResponse('Error: table_name parameter is required', validation.error);
     }
     
     // Validate schema and table names
@@ -68,12 +82,25 @@ class IndexTools {
   static async describeIndex(args) {
     logger.tool('hana_describe_index', args);
     
-    const { schema_name, table_name, index_name } = args || {};
+    let { schema_name, table_name, index_name } = args || {};
+    
+    // Use default schema if not provided
+    if (!schema_name) {
+      if (config.hasDefaultSchema()) {
+        schema_name = config.getDefaultSchema();
+        logger.info(`Using default schema: ${schema_name}`);
+      } else {
+        return Formatters.createErrorResponse(
+          'Schema name is required', 
+          'Please provide schema_name parameter or set HANA_SCHEMA environment variable'
+        );
+      }
+    }
     
     // Validate required parameters
-    const validation = Validators.validateRequired(args, ['schema_name', 'table_name', 'index_name'], 'hana_describe_index');
+    const validation = Validators.validateRequired(args, ['table_name', 'index_name'], 'hana_describe_index');
     if (!validation.valid) {
-      return Formatters.createErrorResponse('Error: schema_name, table_name, and index_name parameters are required', validation.error);
+      return Formatters.createErrorResponse('Error: table_name and index_name parameters are required', validation.error);
     }
     
     // Validate schema, table, and index names
