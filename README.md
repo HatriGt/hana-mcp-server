@@ -2,6 +2,8 @@
 
 A Model Context Protocol (MCP) server for SAP HANA database integration with AI agents like Claude Desktop.
 
+
+
 ## 🚀 Features
 
 - **Real HANA Database Integration**: Connect to actual SAP HANA databases
@@ -11,6 +13,20 @@ A Model Context Protocol (MCP) server for SAP HANA database integration with AI 
 - **Configuration Management**: Environment-based configuration with secure credential handling
 - **Modular Architecture**: Clean, maintainable codebase with separation of concerns
 - **Clean JSON-RPC**: Proper MCP protocol implementation without interference
+
+## 🏗️ Architecture Overview
+
+The HANA MCP Server provides a comprehensive bridge between AI applications and SAP HANA databases through the Model Context Protocol (MCP).
+
+![HANA MCP Server Architecture](docs/hana_mcp_architecture.svg)
+
+The architecture consists of several key components:
+
+- **MCP Clients**: Claude Desktop, VSCode Extensions, and custom AI applications
+- **MCP Protocol Bridge**: JSON-RPC communication layer
+- **HANA MCP Server**: Core server with connection management, schema inspection, query engine, and tool handling
+- **SAP HANA Database**: Enterprise database with in-memory processing capabilities
+- **Available Tools**: Comprehensive set of tools for database operations, web automation, and system management
 
 ## 📋 Prerequisites
 
