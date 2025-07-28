@@ -2,7 +2,7 @@
   "name": "hana-mcp-server",
   "version": "0.1.0",
   "description": "Model Context Protocol server for SAP HANA databases",
-  "main": "hana-mcp-server.js",
+  "main": "src/server/index.js",
   "scripts": {
     "start": "node hana-mcp-server.js",
     "dev": "nodemon hana-mcp-server.js"

@@ -9,7 +9,7 @@ A Model Context Protocol (MCP) server for SAP HANA database integration with AI 
 - **Query Execution**: Execute SQL queries with parameterized support
 - **Administrative Tools**: System information, user management, and monitoring
 - **Configuration Management**: Environment-based configuration with secure credential handling
-- **Graceful Fallback**: Mock tools for testing when database connection is unavailable
+- **Modular Architecture**: Clean, maintainable codebase with separation of concerns
 - **Clean JSON-RPC**: Proper MCP protocol implementation without interference
 
 ## 📋 Prerequisites
@@ -89,6 +89,88 @@ Create `~/.config/claude/claude_desktop_config.json`:
 }
 ```
 
+## 🏗️ Architecture
+
+The HANA MCP Server is built with a modular, maintainable architecture that follows Node.js best practices. The design separates concerns, improves testability, and ensures long-term maintainability.
+
+### Project Structure:
+```
+hana-mcp-server/
+├── hana-mcp-server.js          # Main entry point (thin wrapper)
+├── src/                        # Source code
+│   ├── server/                 # Server layer
+│   │   ├── index.js            # Main server entry point
+│   │   ├── mcp-handler.js      # MCP protocol handler
+│   │   └── lifecycle-manager.js # Server lifecycle management
+│   ├── tools/                  # Tool implementations
+│   │   ├── index.js            # Tool registry
+│   │   ├── config-tools.js     # Configuration tools
+│   │   ├── schema-tools.js     # Schema exploration tools
+│   │   ├── table-tools.js      # Table management tools
+│   │   ├── index-tools.js      # Index management tools
+│   │   └── query-tools.js      # Query execution tools
+│   ├── database/               # Database layer
+│   │   ├── hana-client.js      # HANA client wrapper
+│   │   ├── connection-manager.js # Connection management
+│   │   └── query-executor.js   # Query execution utilities
+│   ├── utils/                  # Utility modules
+│   │   ├── logger.js           # Centralized logging
+│   │   ├── config.js           # Configuration management
+│   │   ├── validators.js       # Input validation
+│   │   └── formatters.js       # Response formatting
+│   └── constants/              # Constants and definitions
+│       ├── mcp-constants.js    # MCP protocol constants
+│       └── tool-definitions.js # Tool schemas and definitions
+├── tests/                      # Testing framework
+├── POC/                        # Proof of Concept implementations
+├── package.json                # Dependencies and scripts
+└── setup.sh                    # Setup script
+```
+
+### Architecture Layers:
+
+#### 1. Server Layer (`src/server/`)
+Handles MCP protocol communication and server lifecycle:
+- **MCP Protocol Handler**: JSON-RPC 2.0 implementation
+- **Lifecycle Management**: Startup, shutdown, and process events
+- **STDIO Transport**: Client communication via stdin/stdout
+
+#### 2. Tools Layer (`src/tools/`)
+Modular tool implementations organized by functionality:
+- **Tool Registry**: Centralized tool management and discovery
+- **Configuration Tools**: Connection testing and config display
+- **Schema Tools**: Database schema exploration
+- **Table Tools**: Table structure and metadata
+- **Index Tools**: Index management and details
+- **Query Tools**: Custom SQL execution
+
+#### 3. Database Layer (`src/database/`)
+Manages HANA database connections and operations:
+- **Connection Manager**: Connection pooling and health checks
+- **Query Executor**: Query execution with validation
+- **HANA Client**: Low-level database wrapper
+
+#### 4. Utilities Layer (`src/utils/`)
+Shared utilities across the application:
+- **Logger**: Structured logging with levels
+- **Config**: Environment variable management
+- **Validators**: Input validation and sanitization
+- **Formatters**: Response formatting utilities
+
+#### 5. Constants Layer (`src/constants/`)
+Centralized constants and definitions:
+- **MCP Constants**: Protocol constants and error codes
+- **Tool Definitions**: Tool schemas and metadata
+
+### Benefits of Modular Architecture
+
+- **Maintainability**: Clear separation of concerns with single-responsibility modules
+- **Testability**: Each module can be tested independently with clear interfaces
+- **Scalability**: Easy to add new tools and features without affecting existing code
+- **Debugging**: Structured logging and modular error handling
+- **Code Reuse**: Shared utilities and consistent patterns across modules
+- **Team Collaboration**: Clear module boundaries and responsibilities
+
 ## 🚀 Usage
 
 ### Quick Start
@@ -155,10 +237,13 @@ Test the server manually:
 
 ```bash
 # Test initialization
-echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' | node hana-mcp-server.js
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' | /opt/homebrew/bin/node hana-mcp-server.js
 
 # Test tools listing
-echo '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | node hana-mcp-server.js
+echo '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | /opt/homebrew/bin/node hana-mcp-server.js
+
+# Test with environment variables
+HANA_HOST="test" HANA_USER="test" HANA_PASSWORD="test" echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"hana_show_config","arguments":{}}}' | /opt/homebrew/bin/node hana-mcp-server.js
 ```
 
 ### Integration Testing
@@ -171,41 +256,68 @@ See `tests/README.md` for detailed testing documentation.
 
 ## 🔧 Development
 
-### Project Structure
-
-```
-hana-mcp-server/
-├── hana-mcp-server.js          # Main MCP server implementation
-├── src/
-│   └── hana-client.js          # HANA database client wrapper
-├── POC/                        # Proof of Concept implementations
-│   ├── simplehanamcp/          # Simple working POC
-│   └── hanamcpwithparams/      # POC with environment variables
-├── package.json                # Node.js dependencies
-├── .gitignore                  # Git ignore rules
-└── README.md                   # This file
-```
-
 ### Key Components
 
 #### `hana-mcp-server.js`
-- Main MCP server implementation
-- JSON-RPC 2.0 protocol handling
-- Tool registration and execution
-- Environment variable configuration
-- Graceful error handling
+- Main entry point that starts the modular server
+- Thin wrapper for backward compatibility
+- Delegates to `src/server/index.js`
 
-#### `src/hana-client.js`
-- SAP HANA database connection wrapper
-- Query execution utilities
-- Connection management
-- Error handling
+#### `src/server/index.js`
+- Main server entry point that coordinates all components
+- STDIO transport setup
+- Process lifecycle management
+
+#### `src/tools/index.js`
+- Tool registry that manages all tool implementations
+- Centralized tool discovery and execution
+- Input validation and error handling
+
+#### `src/database/connection-manager.js`
+- HANA database connection management
+- Connection pooling and health checks
+- Retry logic and error recovery
+
+#### `src/utils/logger.js`
+- Centralized logging with structured output
+- Log levels and formatting
+- Non-interfering with JSON-RPC communication
 
 ### Adding New Tools
 
-1. **Define the tool** in the `tools` object:
+1. **Create a new tool file** in `src/tools/` (e.g., `my-tools.js`):
    ```javascript
-   my_new_tool: {
+   const { logger } = require('../utils/logger');
+   const Formatters = require('../utils/formatters');
+   
+   class MyTools {
+     static async myNewTool(args) {
+       logger.tool('my_new_tool', args);
+       
+       // Tool implementation
+       const result = "Tool result";
+       
+       return Formatters.createResponse(result);
+     }
+   }
+   
+   module.exports = MyTools;
+   ```
+
+2. **Register the tool** in `src/tools/index.js`:
+   ```javascript
+   const MyTools = require('./my-tools');
+   
+   const TOOL_IMPLEMENTATIONS = {
+     // ... existing tools
+     my_new_tool: MyTools.myNewTool
+   };
+   ```
+
+3. **Add tool definition** in `src/constants/tool-definitions.js`:
+   ```javascript
+   {
+     name: "my_new_tool",
      description: "Description of the tool",
      inputSchema: {
        type: "object",
@@ -213,23 +325,11 @@ hana-mcp-server/
          // Define input parameters
        },
        required: []
-     },
-     readOnly: true, // or false
-     async handler(args) {
-       // Tool implementation
-       return {
-         content: [
-           {
-             type: "text",
-             text: "Tool result"
-           }
-         ]
-       };
      }
    }
    ```
 
-2. **Test the tool** using Claude Desktop
+4. **Test the tool** using Claude Desktop or MCP Inspector
 
 ## 🐛 Troubleshooting
 
