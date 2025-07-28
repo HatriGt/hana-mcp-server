@@ -1,0 +1,226 @@
+<svg viewBox="0 0 1400 700" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Professional gradients with enterprise colors -->
+    <linearGradient id="clientGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0ea5e9;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0284c7;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="serverGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#059669;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#047857;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="dbGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7c3aed;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#5b21b6;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="toolGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f8fafc;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#e2e8f0;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="configGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f59e0b;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#d97706;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="benefitGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#dc2626;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#b91c1c;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Enterprise shadow -->
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-opacity="0.15"/>
+    </filter>
+    
+    <!-- Arrow markers -->
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,8 L10,4 z" fill="#475569"/>
+    </marker>
+  </defs>
+
+  <!-- Premium background -->
+  <rect width="1400" height="700" fill="#fafbfc"/>
+  
+  <!-- Title with enterprise styling -->
+  <text x="700" y="40" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="32" font-weight="700" fill="#0f172a">
+    HANA MCP Server Architecture
+  </text>
+  <text x="700" y="65" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="16" font-weight="400" fill="#64748b">
+    Enterprise AI-Database Integration Platform
+  </text>
+  
+  <!-- Client Applications Layer -->
+  <g id="clients">
+    <rect x="80" y="100" width="220" height="130" rx="16" fill="url(#clientGradient)" filter="url(#shadow)"/>
+    <text x="190" y="130" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="18" font-weight="700" fill="white">
+      MCP Clients
+    </text>
+    <rect x="100" y="145" width="180" height="65" rx="8" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+    <text x="190" y="165" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="600" fill="white">
+      • Claude Desktop
+    </text>
+    <text x="190" y="185" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="600" fill="white">
+      • VSCode Extensions
+    </text>
+    <text x="190" y="205" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="600" fill="white">
+      • Custom AI Applications
+    </text>
+  </g>
+
+  <!-- MCP Protocol Bridge -->
+  <rect x="380" y="140" width="140" height="50" rx="25" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="450" y="160" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="600" fill="#475569">
+    MCP Protocol
+  </text>
+  <text x="450" y="175" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="500" fill="#64748b">
+    JSON-RPC
+  </text>
+
+  <!-- HANA MCP Server Core -->
+  <g id="server">
+    <rect x="600" y="80" width="260" height="170" rx="16" fill="url(#serverGradient)" filter="url(#shadow)"/>
+    <text x="730" y="110" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="20" font-weight="700" fill="white">
+      HANA MCP Server
+    </text>
+    <text x="730" y="130" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="12" font-weight="500" fill="rgba(255,255,255,0.9)">
+      Enterprise Database Gateway
+    </text>
+    
+    <!-- Server components in professional grid -->
+    <rect x="620" y="145" width="100" height="40" rx="8" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+    <text x="670" y="165" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="white">Connection</text>
+    <text x="670" y="175" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="10" font-weight="500" fill="rgba(255,255,255,0.9)">Manager</text>
+    
+    <rect x="740" y="145" width="100" height="40" rx="8" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+    <text x="790" y="165" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="white">Schema</text>
+    <text x="790" y="175" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="10" font-weight="500" fill="rgba(255,255,255,0.9)">Inspector</text>
+    
+    <rect x="620" y="200" width="100" height="40" rx="8" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+    <text x="670" y="220" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="white">Query</text>
+    <text x="670" y="230" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="10" font-weight="500" fill="rgba(255,255,255,0.9)">Engine</text>
+    
+    <rect x="740" y="200" width="100" height="40" rx="8" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+    <text x="790" y="220" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="white">Tool</text>
+    <text x="790" y="230" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="10" font-weight="500" fill="rgba(255,255,255,0.9)">Handler</text>
+  </g>
+
+  <!-- SAP HANA Database -->
+  <g id="database">
+    <rect x="940" y="80" width="220" height="170" rx="16" fill="url(#dbGradient)" filter="url(#shadow)"/>
+    <text x="1050" y="110" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="20" font-weight="700" fill="white">
+      SAP HANA
+    </text>
+    <text x="1050" y="130" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="14" font-weight="600" fill="rgba(255,255,255,0.9)">
+      Enterprise Database
+    </text>
+    
+    <!-- Database features -->
+    <rect x="960" y="145" width="180" height="85" rx="8" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+    <text x="1050" y="165" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="600" fill="white">In-Memory Processing</text>
+    <text x="1050" y="185" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="500" fill="rgba(255,255,255,0.9)">• Columnar Store Engine</text>
+    <text x="1050" y="200" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="500" fill="rgba(255,255,255,0.9)">• Real-time Analytics</text>
+    <text x="1050" y="215" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="500" fill="rgba(255,255,255,0.9)">• Enterprise Security</text>
+  </g>
+
+  <!-- Available MCP Tools Section -->
+  <g id="tools">
+    <text x="700" y="310" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="24" font-weight="700" fill="#0f172a">
+      Available MCP Tools
+    </text>
+    
+    <!-- Connection Tools -->
+    <rect x="80" y="340" width="200" height="110" rx="12" fill="url(#toolGradient)" stroke="#0ea5e9" stroke-width="3" filter="url(#shadow)"/>
+    <rect x="90" y="350" width="180" height="30" rx="6" fill="#0ea5e9"/>
+    <text x="180" y="370" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="14" font-weight="700" fill="white">Connection Tools</text>
+    <text x="90" y="390" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="500" fill="#334155">• hana_test_connection</text>
+    <text x="90" y="405" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="500" fill="#334155">• hana_show_config</text>
+    <text x="90" y="420" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="500" fill="#334155">• hana_show_env_vars</text>
+    <text x="90" y="435" font-family="Inter, system-ui, sans-serif" font-size="10" font-weight="400" fill="#64748b">Database connectivity &amp; setup</text>
+    
+    <!-- Schema Tools -->
+    <rect x="300" y="340" width="200" height="110" rx="12" fill="url(#toolGradient)" stroke="#059669" stroke-width="3" filter="url(#shadow)"/>
+    <rect x="310" y="350" width="180" height="30" rx="6" fill="#059669"/>
+    <text x="400" y="370" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="14" font-weight="700" fill="white">Schema Tools</text>
+    <text x="310" y="390" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="500" fill="#334155">• hana_list_schemas</text>
+    <text x="310" y="405" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="500" fill="#334155">• hana_list_tables</text>
+    <text x="310" y="420" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="500" fill="#334155">• hana_describe_table</text>
+    <text x="310" y="435" font-family="Inter, system-ui, sans-serif" font-size="10" font-weight="400" fill="#64748b">Metadata &amp; structure discovery</text>
+    
+    <!-- Index Tools -->
+    <rect x="520" y="340" width="200" height="110" rx="12" fill="url(#toolGradient)" stroke="#f59e0b" stroke-width="3" filter="url(#shadow)"/>
+    <rect x="530" y="350" width="180" height="30" rx="6" fill="#f59e0b"/>
+    <text x="620" y="370" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="14" font-weight="700" fill="white">Index Tools</text>
+    <text x="530" y="390" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="500" fill="#334155">• hana_list_indexes</text>
+    <text x="530" y="405" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="500" fill="#334155">• hana_describe_index</text>
+    <text x="530" y="420" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="500" fill="#334155">• Performance optimization</text>
+    <text x="530" y="435" font-family="Inter, system-ui, sans-serif" font-size="10" font-weight="400" fill="#64748b">Index management &amp; analysis</text>
+    
+    <!-- Query Tools -->
+    <rect x="740" y="340" width="200" height="110" rx="12" fill="url(#toolGradient)" stroke="#7c3aed" stroke-width="3" filter="url(#shadow)"/>
+    <rect x="750" y="350" width="180" height="30" rx="6" fill="#7c3aed"/>
+    <text x="840" y="370" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="14" font-weight="700" fill="white">Query Tools</text>
+    <text x="750" y="390" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="500" fill="#334155">• hana_execute_query</text>
+    <text x="750" y="405" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="500" fill="#334155">• Parameterized queries</text>
+    <text x="750" y="420" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="500" fill="#334155">• Custom SQL execution</text>
+    <text x="750" y="435" font-family="Inter, system-ui, sans-serif" font-size="10" font-weight="400" fill="#64748b">Data retrieval &amp; analysis</text>
+    
+    <!-- Browser Control Tools -->
+    <rect x="960" y="340" width="200" height="110" rx="12" fill="url(#toolGradient)" stroke="#dc2626" stroke-width="3" filter="url(#shadow)"/>
+    <rect x="970" y="350" width="180" height="30" rx="6" fill="#dc2626"/>
+    <text x="1060" y="370" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="14" font-weight="700" fill="white">Browser Control</text>
+    <text x="970" y="390" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="500" fill="#334155">• open_url</text>
+    <text x="970" y="405" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="500" fill="#334155">• get_page_content</text>
+    <text x="970" y="420" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="500" fill="#334155">• execute_javascript</text>
+    <text x="970" y="435" font-family="Inter, system-ui, sans-serif" font-size="10" font-weight="400" fill="#64748b">Web automation &amp; integration</text>
+  </g>
+
+  <!-- Configuration and Benefits Section -->
+  <g id="bottom-section">
+    <!-- Configuration -->
+    <rect x="180" y="500" width="350" height="120" rx="12" fill="url(#configGradient)" filter="url(#shadow)"/>
+    <text x="355" y="530" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="18" font-weight="700" fill="white">
+      Configuration &amp; Security
+    </text>
+    <rect x="200" y="545" width="310" height="65" rx="8" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+    <text x="210" y="565" font-family="Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="white">• Environment Variables (HANA_HOST, HANA_USER, etc.)</text>
+    <text x="210" y="580" font-family="Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="white">• SSL/TLS Encryption &amp; Certificate Validation</text>
+    <text x="210" y="595" font-family="Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="white">• Connection Pooling &amp; Resource Management</text>
+
+    <!-- Key Benefits -->
+    <rect x="580" y="500" width="350" height="120" rx="12" fill="url(#benefitGradient)" filter="url(#shadow)"/>
+    <text x="755" y="530" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="18" font-weight="700" fill="white">
+      Enterprise Benefits
+    </text>
+    <rect x="600" y="545" width="310" height="65" rx="8" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+    <text x="610" y="565" font-family="Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="white">• Seamless AI-Database Integration</text>
+    <text x="610" y="580" font-family="Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="white">• Enterprise-Grade Security &amp; Compliance</text>
+    <text x="610" y="595" font-family="Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="white">• Real-time Analytics &amp; Decision Support</text>
+
+    <!-- Performance Metrics -->
+    <rect x="980" y="500" width="240" height="120" rx="12" fill="#334155" filter="url(#shadow)"/>
+    <text x="1100" y="530" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="18" font-weight="700" fill="white">
+      Performance
+    </text>
+    <rect x="1000" y="545" width="200" height="65" rx="8" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+    <text x="1010" y="565" font-family="Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="white">• Sub-second Query Response</text>
+    <text x="1010" y="580" font-family="Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="white">• Concurrent User Support</text>
+    <text x="1010" y="595" font-family="Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="white">• Optimized Memory Usage</text>
+  </g>
+
+  <!-- Professional Data Flow Arrows with better spacing -->
+  <path d="M 300 165 L 380 165" stroke="#475569" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 520 165 L 600 165" stroke="#475569" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 860 165 L 940 165" stroke="#475569" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- Flow labels with professional styling and better positioning -->
+  <text x="340" y="145" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="600" fill="#475569">JSON-RPC</text>
+  <text x="560" y="145" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="600" fill="#475569">Tool Calls</text>
+  <text x="900" y="145" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="600" fill="#475569">SQL Queries</text>
+
+  <!-- Enterprise Footer -->
+  <text x="700" y="660" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="14" font-weight="600" fill="#0f172a">
+    Enterprise AI-Database Integration Platform
+  </text>
+  <text x="700" y="680" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="12" font-weight="400" fill="#64748b">
+    Enabling secure, scalable AI-powered database interactions through standardized protocols
+  </text>
+</svg>
