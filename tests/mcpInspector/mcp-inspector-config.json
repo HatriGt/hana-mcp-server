@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "HANA Database": {
+      "command": "/opt/homebrew/bin/node",
+      "args": [
+        "/Users/Common/ProjectsRepo/tools/hana-mcp-server/hana-mcp-server.js"
+      ],
+      "env": {
+        "HANA_HOST": "7f94bf00-5c54-40ee-8ec6-e3800940be1b.hna1.prod-eu10.hanacloud.ondemand.com",
+        "HANA_PORT": "443",
+        "HANA_USER": "3E05051BFEBB48FDAAC49AADCF353842_6I8ZPQG3KO8JEX49ADIEJ0DSR_RT",
+        "HANA_PASSWORD": "El6I4.sKUgFFstxPzP_BebVV4i4lTMveWhpg4zH4VqRXTS1x_.2zhkx5yxbG1UfCE5826bN.DzkUwvlvAJx5Az2-i6uz0vBq_HgP5bwLFdIREFXJix6WUSf1qeou0BPJ",
+        "HANA_SCHEMA": "61000330C5F74440BC7E6784B1745EB6",
+        "HANA_SSL": "true",
+        "HANA_ENCRYPT": "true",
+        "HANA_VALIDATE_CERT": "true"
+      }
+    }
+  }
+} 

@@ -27,9 +27,16 @@ echo "✅ Node.js found: $($NODE_PATH --version)"
 if [ ! -d "node_modules" ]; then
     echo "📦 Installing dependencies..."
     npm install
+    if [ $? -eq 0 ]; then
+        echo "✅ Dependencies installed successfully"
+    else
+        echo "❌ Failed to install dependencies"
+        echo "Please run 'npm install' manually"
+        exit 1
+    fi
+else
+    echo "✅ Dependencies already installed"
 fi
-
-echo "✅ Dependencies installed"
 
 # Make the server executable
 chmod +x "$SCRIPT_DIR/hana-mcp-server.js"
