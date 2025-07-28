@@ -125,8 +125,32 @@ Create `~/.config/claude/claude_desktop_config.json`:
 
 ## 🧪 Testing
 
-### Manual Testing
+The project includes comprehensive testing tools organized in the `tests/` folder:
 
+### 1. MCP Inspector (Recommended)
+Web-based UI for interactive testing:
+```bash
+# Open MCP Inspector
+open https://modelcontextprotocol.io/inspector
+
+# Use configuration from tests/mcpInspector/mcp-inspector-config.json
+```
+
+### 2. Automated Testing
+Run automated test suite:
+```bash
+cd tests/automated
+node test-mcp-inspector.js
+```
+
+### 3. Manual Testing
+Interactive command-line testing:
+```bash
+cd tests/manual
+node manual-test.js
+```
+
+### 4. Quick Manual Testing
 Test the server manually:
 
 ```bash
@@ -142,6 +166,8 @@ echo '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | node hana-mc
 1. **Start Claude Desktop** with the MCP configuration
 2. **Ask Claude** to test the HANA connection
 3. **Verify tools** are available and functional
+
+See `tests/README.md` for detailed testing documentation.
 
 ## 🔧 Development
 
