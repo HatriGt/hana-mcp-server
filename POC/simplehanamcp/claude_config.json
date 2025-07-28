@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "HANA Database": {
+      "command": "/opt/homebrew/bin/node",
+      "args": [
+        "/Users/Common/ProjectsRepo/tools/hana-mcp-server/mcp-server-final.js"
+      ]
+    }
+  }
+} 
