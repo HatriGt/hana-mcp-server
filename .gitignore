@@ -6,6 +6,16 @@ yarn-error.log
 
 # Environment variables
 .env
+.env.local
+.env.production
+.env.staging
+
+# Security - Credential files
+*config*.json
+*credential*.json
+*secret*.json
+*password*.json
+*key*.json
 
 # Build output
 dist/
