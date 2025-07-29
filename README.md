@@ -2,7 +2,9 @@
 
 A Model Context Protocol (MCP) server for SAP HANA database integration with AI agents like Claude Desktop.
 
-
+<a href="https://glama.ai/mcp/servers/@HatriGt/hana-mcp-server">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@HatriGt/hana-mcp-server/badge" alt="HANA Cloud Server MCP server" />
+</a>
 
 ## 🚀 Features
 
