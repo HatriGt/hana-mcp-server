@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![MCP](https://badge.mcpx.dev?type=server)](https://modelcontextprotocol.io/)
 
-> **Enterprise-grade Model Context Protocol (MCP) server for seamless SAP HANA database integration with AI agents and development tools.**
+> **Model Context Protocol (MCP) server for seamless SAP HANA database integration with AI agents and development tools.**
 
 ## 📋 Table of Contents
 
@@ -27,7 +27,7 @@
 The SAP HANA MCP Server provides a robust, production-ready bridge between AI applications and SAP HANA databases through the Model Context Protocol (MCP). Designed for enterprise environments, it offers comprehensive database management capabilities with secure, scalable architecture.
 
 ### Supported Platforms
-- **AI Agents**: Claude Desktop, VSCode Extensions, Custom AI Applications
+- **AI Agents**: Custom AI Applications, Claude Desktop, VSCode Extensions 
 - **Databases**: SAP HANA (All versions)
 - **Operating Systems**: macOS, Linux, Windows
 - **Node.js**: 18.x and above
@@ -61,41 +61,7 @@ The SAP HANA MCP Server provides a robust, production-ready bridge between AI ap
 
 ### System Architecture
 
-```mermaid
-graph TB
-    subgraph "AI Applications"
-        A[Claude Desktop]
-        B[VSCode Extensions]
-        C[Custom AI Apps]
-    end
-    
-    subgraph "MCP Protocol Layer"
-        D[JSON-RPC 2.0]
-        E[STDIO Transport]
-    end
-    
-    subgraph "HANA MCP Server"
-        F[Server Layer]
-        G[Tools Layer]
-        H[Database Layer]
-        I[Utilities Layer]
-    end
-    
-    subgraph "SAP HANA Database"
-        J[HANA Database]
-        K[In-Memory Processing]
-    end
-    
-    A --> D
-    B --> D
-    C --> D
-    D --> E
-    E --> F
-    F --> G
-    G --> H
-    H --> J
-    J --> K
-```
+![HANA MCP Server Architecture](docs/hana_mcp_architecture.svg)
 
 ### Component Architecture
 
@@ -626,25 +592,3 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 - **Anthropic** for Claude Desktop and MCP specification
 - **MCP Community** for protocol development and standards
 - **Open Source Contributors** for valuable feedback and contributions
-
-## 📞 Support
-
-### Getting Help
-
-- **Documentation**: Check this README and inline code documentation
-- **Issues**: Report bugs and feature requests via GitHub Issues
-- **Discussions**: Join community discussions for questions and ideas
-- **Security**: Report security vulnerabilities privately
-
-### Support Channels
-
-| Channel | Purpose | Response Time |
-|---------|---------|---------------|
-| GitHub Issues | Bug reports, feature requests | 24-48 hours |
-| GitHub Discussions | Questions, community support | 1-3 days |
-
----
-
-**Built with ❤️ for the SAP HANA and AI communities**
-
-*Last updated: December 2024*
