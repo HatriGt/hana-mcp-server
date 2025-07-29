@@ -61,7 +61,7 @@ The SAP HANA MCP Server provides a robust, production-ready bridge between AI ap
 
 ### System Architecture
 
-![HANA MCP Server Architecture](docs/hana_mcp_architecture.svg?v=2)
+![HANA MCP Server Architecture](docs/hana_mcp_architecture.svg)
 
 ### Component Architecture
 
