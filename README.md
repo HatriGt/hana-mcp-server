@@ -1,92 +1,173 @@
-# HANA MCP Server
+# SAP HANA MCP Server
 
-A Model Context Protocol (MCP) server for SAP HANA database integration with AI agents like Claude Desktop.
+[![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![MCP](https://badge.mcpx.dev?type=server)](https://modelcontextprotocol.io/)
 
+> **Model Context Protocol (MCP) server for seamless SAP HANA database integration with AI agents and development tools.**
 
+## 📋 Table of Contents
 
-## 🚀 Features
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [Architecture](#architecture)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Usage](#usage)
+- [API Reference](#api-reference)
+- [Testing](#testing)
+- [Development](#development)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License](#license)
 
-- **Real HANA Database Integration**: Connect to actual SAP HANA databases
-- **Schema Exploration**: List schemas, tables, columns, and indexes
-- **Query Execution**: Execute SQL queries with parameterized support
-- **Administrative Tools**: System information, user management, and monitoring
-- **Configuration Management**: Environment-based configuration with secure credential handling
-- **Modular Architecture**: Clean, maintainable codebase with separation of concerns
-- **Clean JSON-RPC**: Proper MCP protocol implementation without interference
+## 🎯 Overview
 
-## 🏗️ Architecture Overview
+The SAP HANA MCP Server provides a robust, production-ready bridge between AI applications and SAP HANA databases through the Model Context Protocol (MCP). Designed for enterprise environments, it offers comprehensive database management capabilities with secure, scalable architecture.
 
-The HANA MCP Server provides a comprehensive bridge between AI applications and SAP HANA databases through the Model Context Protocol (MCP).
+### Supported Platforms
+- **AI Agents**: Custom AI Applications, Claude Desktop, VSCode Extensions 
+- **Databases**: SAP HANA (All versions)
+- **Operating Systems**: macOS, Linux, Windows
+- **Node.js**: 18.x and above
+
+## ✨ Key Features
+
+### 🔐 Enterprise Security
+- **Secure Credential Management**: Environment-based configuration
+- **SSL/TLS Support**: Full encryption for database communications
+- **Certificate Validation**: Configurable certificate verification
+
+### 🗄️ Database Operations
+- **Schema Exploration**: Complete database schema discovery and navigation
+- **Query Execution**: Advanced SQL query execution with parameterized support
+- **Administrative Tools**: System monitoring, user management, and performance insights
+- **Data Management**: Sample data retrieval, row counting, and metadata analysis
+
+### 🏗️ Architecture Excellence
+- **Modular Design**: Clean separation of concerns with maintainable codebase
+- **Scalable Architecture**: Easy extension and customization for enterprise needs
+- **Comprehensive Logging**: Structured logging with configurable levels
+- **Error Handling**: Robust error management with detailed diagnostics
+
+### 🔧 Developer Experience
+- **MCP Protocol Compliance**: Full Model Context Protocol 2.0 implementation
+- **Tool Discovery**: Automatic tool registration and discovery
+- **JSON-RPC 2.0**: Standardized communication protocol
+- **Testing Framework**: Comprehensive testing suite with multiple validation methods
+
+## 🏗️ Architecture
+
+### System Architecture
 
 ![HANA MCP Server Architecture](docs/hana_mcp_architecture.svg)
 
-The architecture consists of several key components:
+### Component Architecture
 
-- **MCP Clients**: Claude Desktop, VSCode Extensions, and custom AI applications
-- **MCP Protocol Bridge**: JSON-RPC communication layer
-- **HANA MCP Server**: Core server with connection management, schema inspection, query engine, and tool handling
-- **SAP HANA Database**: Enterprise database with in-memory processing capabilities
-- **Available Tools**: Comprehensive set of tools for database operations, web automation, and system management
+```
+hana-mcp-server/
+├── 📁 src/
+│   ├── 🏗️ server/           # MCP Protocol & Server Management
+│   │   ├── index.js         # Main server entry point
+│   │   ├── mcp-handler.js   # JSON-RPC 2.0 implementation
+│   │   └── lifecycle-manager.js # Server lifecycle management
+│   ├── 🛠️ tools/            # Tool Implementations
+│   │   ├── index.js         # Tool registry & discovery
+│   │   ├── config-tools.js  # Configuration management
+│   │   ├── schema-tools.js  # Schema exploration
+│   │   ├── table-tools.js   # Table operations
+│   │   ├── index-tools.js   # Index management
+│   │   └── query-tools.js   # Query execution
+│   ├── 🗄️ database/         # Database Layer
+│   │   ├── hana-client.js   # HANA client wrapper
+│   │   ├── connection-manager.js # Connection management
+│   │   └── query-executor.js # Query execution utilities
+│   ├── 🔧 utils/            # Shared Utilities
+│   │   ├── logger.js        # Structured logging
+│   │   ├── config.js        # Configuration management
+│   │   ├── validators.js    # Input validation
+│   │   └── formatters.js    # Response formatting
+│   └── 📋 constants/        # Constants & Definitions
+│       ├── mcp-constants.js # MCP protocol constants
+│       └── tool-definitions.js # Tool schemas
+├── 🧪 tests/                # Testing Framework
+├── 📚 docs/                 # Documentation
+├── 📦 package.json          # Dependencies & Scripts
+└── 🚀 hana-mcp-server.js    # Main entry point
+```
 
 ## 📋 Prerequisites
 
-- Node.js 18+ 
-- SAP HANA database access
-- Claude Desktop (for AI agent integration)
+### System Requirements
+- **Node.js**: Version 18.x or higher
+- **Memory**: Minimum 512MB RAM (2GB recommended)
+- **Storage**: 100MB available disk space
+- **Network**: Access to SAP HANA database
 
-## 🛠️ Installation
+### Database Requirements
+- **SAP HANA**: Version 2.0 or higher
+- **User Permissions**: SELECT, DESCRIBE, and administrative privileges
+- **Network Access**: TCP/IP connectivity to HANA instance
 
-1. **Clone the repository**:
-   ```bash
-   git clone <repository-url>
-   cd hana-mcp-server
-   ```
+### Development Tools
+- **Claude Desktop**: For AI agent integration
+- **VSCode**: For development and testing (optional)
+- **Git**: For version control
 
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
+## 🚀 Installation
 
-3. **Make the server executable**:
-   ```bash
-   chmod +x hana-mcp-server.js
-   ```
+### Quick Installation
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd hana-mcp-server
+
+# Install dependencies
+npm install
+
+# Make server executable
+chmod +x hana-mcp-server.js
+
+# Start the server
+node hana-mcp-server.js
+```
 
 ## ⚙️ Configuration
 
-### Environment Variables
+### Environment Configuration
 
-Create a configuration file or set environment variables:
+Create a `.env` file or set environment variables:
 
 ```bash
-# Required HANA Database Configuration
-export HANA_HOST="your-hana-host.com"
-export HANA_PORT="443"
-export HANA_USER="your-username"
-export HANA_PASSWORD="your-password"
-export HANA_SCHEMA="your-default-schema"  # Used as default for tools that require schema_name
+# Required: Database Connection
+HANA_HOST=your-hana-host.com
+HANA_PORT=443
+HANA_USER=your-username
+HANA_PASSWORD=your-password
+HANA_SCHEMA=your-default-schema
 
-# Optional Configuration
-export HANA_SCHEMA="your-default-schema"  # Used as default for tools that require schema_name
-export HANA_SSL="true"
-export HANA_ENCRYPT="true"
-export HANA_VALIDATE_CERT="true"
+# Optional: Security & Performance
+HANA_SSL=true
+HANA_ENCRYPT=true
+HANA_VALIDATE_CERT=true
 
-# Logging Configuration
-export LOG_LEVEL="info"
-export ENABLE_FILE_LOGGING="true"
-export ENABLE_CONSOLE_LOGGING="false"
+# Optional: Logging Configuration
+LOG_LEVEL=info
+ENABLE_FILE_LOGGING=true
+ENABLE_CONSOLE_LOGGING=false
 ```
 
 ### Claude Desktop Configuration
 
-Create `~/.config/claude/claude_desktop_config.json`:
+Configure Claude Desktop for MCP integration:
 
 ```json
 {
   "mcpServers": {
-    "HANA Database": {
-      "command": "/opt/homebrew/bin/node",
+    "SAP HANA Database": {
+      "command": "/usr/local/bin/node",
       "args": [
         "/path/to/hana-mcp-server/hana-mcp-server.js"
       ],
@@ -98,160 +179,131 @@ Create `~/.config/claude/claude_desktop_config.json`:
         "HANA_SCHEMA": "your-schema",
         "HANA_SSL": "true",
         "LOG_LEVEL": "info",
-        "ENABLE_FILE_LOGGING": "true",
-        "ENABLE_CONSOLE_LOGGING": "false"
+        "ENABLE_FILE_LOGGING": "true"
       }
     }
   }
 }
 ```
 
-## 🏗️ Architecture
-
-The HANA MCP Server is built with a modular, maintainable architecture that follows Node.js best practices. The design separates concerns, improves testability, and ensures long-term maintainability.
-
-### Project Structure:
-```
-hana-mcp-server/
-├── hana-mcp-server.js          # Main entry point (thin wrapper)
-├── src/                        # Source code
-│   ├── server/                 # Server layer
-│   │   ├── index.js            # Main server entry point
-│   │   ├── mcp-handler.js      # MCP protocol handler
-│   │   └── lifecycle-manager.js # Server lifecycle management
-│   ├── tools/                  # Tool implementations
-│   │   ├── index.js            # Tool registry
-│   │   ├── config-tools.js     # Configuration tools
-│   │   ├── schema-tools.js     # Schema exploration tools
-│   │   ├── table-tools.js      # Table management tools
-│   │   ├── index-tools.js      # Index management tools
-│   │   └── query-tools.js      # Query execution tools
-│   ├── database/               # Database layer
-│   │   ├── hana-client.js      # HANA client wrapper
-│   │   ├── connection-manager.js # Connection management
-│   │   └── query-executor.js   # Query execution utilities
-│   ├── utils/                  # Utility modules
-│   │   ├── logger.js           # Centralized logging
-│   │   ├── config.js           # Configuration management
-│   │   ├── validators.js       # Input validation
-│   │   └── formatters.js       # Response formatting
-│   └── constants/              # Constants and definitions
-│       ├── mcp-constants.js    # MCP protocol constants
-│       └── tool-definitions.js # Tool schemas and definitions
-├── tests/                      # Testing framework
-├── POC/                        # Proof of Concept implementations
-├── package.json                # Dependencies and scripts
-└── setup.sh                    # Setup script
-```
-
-### Architecture Layers:
-
-#### 1. Server Layer (`src/server/`)
-Handles MCP protocol communication and server lifecycle:
-- **MCP Protocol Handler**: JSON-RPC 2.0 implementation
-- **Lifecycle Management**: Startup, shutdown, and process events
-- **STDIO Transport**: Client communication via stdin/stdout
-
-#### 2. Tools Layer (`src/tools/`)
-Modular tool implementations organized by functionality:
-- **Tool Registry**: Centralized tool management and discovery
-- **Configuration Tools**: Connection testing and config display
-- **Schema Tools**: Database schema exploration
-- **Table Tools**: Table structure and metadata
-- **Index Tools**: Index management and details
-- **Query Tools**: Custom SQL execution
-
-#### 3. Database Layer (`src/database/`)
-Manages HANA database connections and operations:
-- **Connection Manager**: Connection pooling and health checks
-- **Query Executor**: Query execution with validation
-- **HANA Client**: Low-level database wrapper
-
-#### 4. Utilities Layer (`src/utils/`)
-Shared utilities across the application:
-- **Logger**: Structured logging with levels
-- **Config**: Environment variable management
-- **Validators**: Input validation and sanitization
-- **Formatters**: Response formatting utilities
-
-#### 5. Constants Layer (`src/constants/`)
-Centralized constants and definitions:
-- **MCP Constants**: Protocol constants and error codes
-- **Tool Definitions**: Tool schemas and metadata
-
-### Benefits of Modular Architecture
-
-- **Maintainability**: Clear separation of concerns with single-responsibility modules
-- **Testability**: Each module can be tested independently with clear interfaces
-- **Scalability**: Easy to add new tools and features without affecting existing code
-- **Debugging**: Structured logging and modular error handling
-- **Code Reuse**: Shared utilities and consistent patterns across modules
-- **Team Collaboration**: Clear module boundaries and responsibilities
+**Configuration File Location:**
+- **macOS**: `~/.config/claude/claude_desktop_config.json`
+- **Linux**: `~/.config/claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\claude\claude_desktop_config.json`
 
 ## 🚀 Usage
 
 ### Quick Start
 
-1. **Configure your HANA database details** in the Claude Desktop configuration
-2. **Restart Claude Desktop**
-3. **Test the connection** using the `hana_test_connection` tool
-4. **Explore your database** using the available tools
+1. **Configure Database Connection**
+   ```bash
+   export HANA_HOST="your-hana-host.com"
+   export HANA_USER="your-username"
+   export HANA_PASSWORD="your-password"
+   ```
+
+2. **Start Server**
+   ```bash
+   node hana-mcp-server.js
+   ```
+
+3. **Test Connection**
+   Use the `hana_test_connection` tool through Claude Desktop or MCP Inspector
 
 ### Default Schema Behavior
 
-The server supports using a default schema from the `HANA_SCHEMA` environment variable:
+The server intelligently handles schema selection:
 
-- **When `HANA_SCHEMA` is set**: Tools that accept optional `schema_name` parameters will use this schema if no `schema_name` is provided
-- **When `HANA_SCHEMA` is not set**: Users must explicitly provide the `schema_name` parameter for tools that require it
+| Scenario | Behavior |
+|----------|----------|
+| `HANA_SCHEMA` set | Uses default schema for optional parameters |
+| `HANA_SCHEMA` not set | Requires explicit schema specification |
+| Schema parameter provided | Overrides default schema |
 
 **Examples:**
-```bash
-# With HANA_SCHEMA="MY_SCHEMA" set in environment:
-# This will use MY_SCHEMA automatically
-{"name":"hana_list_tables","arguments":{}}
+```json
+// With HANA_SCHEMA="MY_SCHEMA"
+{"name":"hana_list_tables","arguments":{}}  // Uses MY_SCHEMA
 
-# This will override and use CUSTOM_SCHEMA
+// Override default schema
 {"name":"hana_list_tables","arguments":{"schema_name":"CUSTOM_SCHEMA"}}
 
-# Without HANA_SCHEMA set:
-# This will return an error asking for schema_name
-{"name":"hana_list_tables","arguments":{}}
-
-# This will work as expected
+// Without HANA_SCHEMA (requires explicit schema)
 {"name":"hana_list_tables","arguments":{"schema_name":"MY_SCHEMA"}}
 ```
 
-### Available Tools
+## 📚 API Reference
 
-#### Configuration Tools
-- `hana_show_config` - Display current HANA configuration
-- `hana_test_connection` - Test database connectivity
-- `hana_show_env_vars` - Show environment variables (debugging)
+### Configuration Tools
 
-#### Schema Exploration Tools
-- `hana_list_schemas` - List all database schemas
-- `hana_list_tables` - List tables in a schema
-- `hana_describe_table` - Show table structure and metadata
-- `hana_list_indexes` - List indexes for a table
-- `hana_describe_index` - Show index details
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `hana_show_config` | Display current HANA configuration | None |
+| `hana_test_connection` | Test database connectivity | None |
+| `hana_show_env_vars` | Show environment variables (debug) | None |
 
-#### Query Execution Tools
-- `hana_execute_query` - Execute SQL queries
-- `hana_execute_parameterized_query` - Execute parameterized queries
-- `hana_get_sample_data` - Get sample data from a table
-- `hana_count_rows` - Count rows in a table
+### Schema Exploration Tools
 
-#### Administrative Tools
-- `hana_get_system_info` - Get system information
-- `hana_get_user_info` - Get current user information
-- `hana_get_memory_usage` - Get memory usage statistics
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `hana_list_schemas` | List all database schemas | None |
+| `hana_list_tables` | List tables in a schema | `schema_name` (optional) |
+| `hana_describe_table` | Show table structure | `schema_name`, `table_name` |
+| `hana_list_indexes` | List indexes for a table | `schema_name`, `table_name` |
+| `hana_describe_index` | Show index details | `schema_name`, `table_name`, `index_name` |
+
+### Query Execution Tools
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `hana_execute_query` | Execute SQL queries | `query` |
+| `hana_execute_parameterized_query` | Execute parameterized queries | `query`, `parameters` |
+| `hana_get_sample_data` | Get sample data from table | `schema_name`, `table_name`, `limit` |
+| `hana_count_rows` | Count rows in a table | `schema_name`, `table_name` |
+
+### Administrative Tools
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `hana_get_system_info` | Get system information | None |
+| `hana_get_user_info` | Get current user information | None |
+| `hana_get_memory_usage` | Get memory usage statistics | None |
+
+### Tool Response Format
+
+All tools return standardized JSON responses:
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "Tool execution result"
+    }
+  ],
+  "isError": false,
+  "error": null
+}
+```
 
 ## 🧪 Testing
 
-The project includes comprehensive testing tools organized in the `tests/` folder:
+### Testing Framework Overview
 
-### 1. MCP Inspector (Recommended)
-Web-based UI for interactive testing:
+The project includes a comprehensive testing suite with multiple validation methods:
+
+```
+tests/
+├── 🧪 automated/           # Automated test suite
+├── 🖱️ manual/             # Manual testing tools
+├── 🔍 mcpInspector/       # MCP Inspector configuration
+└── 📋 README.md           # Testing documentation
+```
+
+### 1. MCP Inspector Testing (Recommended)
+
+**Web-based interactive testing interface:**
+
 ```bash
 # Open MCP Inspector
 open https://modelcontextprotocol.io/inspector
@@ -259,203 +311,284 @@ open https://modelcontextprotocol.io/inspector
 # Use configuration from tests/mcpInspector/mcp-inspector-config.json
 ```
 
+**Benefits:**
+- Visual tool discovery and testing
+- Real-time request/response inspection
+- Protocol compliance validation
+- Interactive debugging capabilities
+
 ### 2. Automated Testing
-Run automated test suite:
+
+**Run comprehensive test suite:**
+
 ```bash
+# Navigate to test directory
 cd tests/automated
+
+# Run automated tests
 node test-mcp-inspector.js
+
+# Run with specific configuration
+HANA_HOST="test" HANA_USER="test" node test-mcp-inspector.js
 ```
 
 ### 3. Manual Testing
-Interactive command-line testing:
+
+**Interactive command-line testing:**
+
 ```bash
+# Navigate to manual test directory
 cd tests/manual
+
+# Start interactive testing
 node manual-test.js
 ```
 
-### 4. Quick Manual Testing
-Test the server manually:
+### 4. Quick Validation Tests
+
+**Test server functionality manually:**
 
 ```bash
 # Test initialization
-echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' | /opt/homebrew/bin/node hana-mcp-server.js
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' | node hana-mcp-server.js
 
 # Test tools listing
-echo '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | /opt/homebrew/bin/node hana-mcp-server.js
+echo '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | node hana-mcp-server.js
 
-# Test with environment variables
-HANA_HOST="test" HANA_USER="test" HANA_PASSWORD="test" echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"hana_show_config","arguments":{}}}' | /opt/homebrew/bin/node hana-mcp-server.js
+# Test tool execution
+HANA_HOST="test" HANA_USER="test" HANA_PASSWORD="test" echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"hana_show_config","arguments":{}}}' | node hana-mcp-server.js
 ```
 
 ### Integration Testing
 
-1. **Start Claude Desktop** with the MCP configuration
-2. **Ask Claude** to test the HANA connection
-3. **Verify tools** are available and functional
-
-See `tests/README.md` for detailed testing documentation.
+1. **Configure Claude Desktop** with MCP server settings
+2. **Restart Claude Desktop** to load new configuration
+3. **Test connection** using AI agent commands
+4. **Verify tool functionality** through natural language interaction
 
 ## 🔧 Development
 
-### Key Components
+### Development Setup
 
-#### `hana-mcp-server.js`
-- Main entry point that starts the modular server
-- Thin wrapper for backward compatibility
-- Delegates to `src/server/index.js`
+```bash
+# Clone repository
+git clone <repository-url>
+cd hana-mcp-server
 
-#### `src/server/index.js`
-- Main server entry point that coordinates all components
-- STDIO transport setup
-- Process lifecycle management
+# Install development dependencies
+npm install
 
-#### `src/tools/index.js`
-- Tool registry that manages all tool implementations
-- Centralized tool discovery and execution
-- Input validation and error handling
-
-#### `src/database/connection-manager.js`
-- HANA database connection management
-- Connection pooling and health checks
-- Retry logic and error recovery
-
-#### `src/utils/logger.js`
-- Centralized logging with structured output
-- Log levels and formatting
-- Non-interfering with JSON-RPC communication
+# Start development server with auto-reload
+npm run dev
+```
 
 ### Adding New Tools
 
-1. **Create a new tool file** in `src/tools/` (e.g., `my-tools.js`):
-   ```javascript
-   const { logger } = require('../utils/logger');
-   const Formatters = require('../utils/formatters');
-   
-   class MyTools {
-     static async myNewTool(args) {
-       logger.tool('my_new_tool', args);
-       
-       // Tool implementation
-       const result = "Tool result";
-       
-       return Formatters.createResponse(result);
-     }
-   }
-   
-   module.exports = MyTools;
-   ```
+#### 1. Create Tool Implementation
 
-2. **Register the tool** in `src/tools/index.js`:
-   ```javascript
-   const MyTools = require('./my-tools');
-   
-   const TOOL_IMPLEMENTATIONS = {
-     // ... existing tools
-     my_new_tool: MyTools.myNewTool
-   };
-   ```
+```javascript
+// src/tools/my-tools.js
+const { logger } = require('../utils/logger');
+const Formatters = require('../utils/formatters');
 
-3. **Add tool definition** in `src/constants/tool-definitions.js`:
-   ```javascript
-   {
-     name: "my_new_tool",
-     description: "Description of the tool",
-     inputSchema: {
-       type: "object",
-       properties: {
-         // Define input parameters
-       },
-       required: []
-     }
-   }
-   ```
+class MyTools {
+  static async myNewTool(args) {
+    logger.tool('my_new_tool', args);
+    
+    try {
+      // Tool implementation
+      const result = await this.performOperation(args);
+      
+      return Formatters.createResponse(result);
+    } catch (error) {
+      logger.error('Tool execution failed', error);
+      return Formatters.createErrorResponse(error.message);
+    }
+  }
+  
+  static async performOperation(args) {
+    // Tool logic implementation
+    return "Operation completed successfully";
+  }
+}
 
-4. **Test the tool** using Claude Desktop or MCP Inspector
+module.exports = MyTools;
+```
+
+#### 2. Register Tool
+
+```javascript
+// src/tools/index.js
+const MyTools = require('./my-tools');
+
+const TOOL_IMPLEMENTATIONS = {
+  // ... existing tools
+  my_new_tool: MyTools.myNewTool
+};
+```
+
+#### 3. Define Tool Schema
+
+```javascript
+// src/constants/tool-definitions.js
+{
+  name: "my_new_tool",
+  description: "Performs a specific operation with detailed description",
+  inputSchema: {
+    type: "object",
+    properties: {
+      parameter1: {
+        type: "string",
+        description: "Description of parameter1"
+      },
+      parameter2: {
+        type: "number",
+        description: "Description of parameter2"
+      }
+    },
+    required: ["parameter1"]
+  }
+}
+```
+
+#### 4. Test Implementation
+
+```bash
+# Test new tool using MCP Inspector
+# Or run manual tests
+cd tests/manual
+node manual-test.js
+```
+
+### Development Scripts
+
+```json
+{
+  "scripts": {
+    "start": "node hana-mcp-server.js",
+    "dev": "nodemon hana-mcp-server.js"
+  }
+}
+```
 
 ## 🐛 Troubleshooting
 
-### Common Issues
+### Common Issues & Solutions
 
-#### "MCP server not visible"
-- Check Claude Desktop configuration path
-- Verify Node.js executable path
-- Ensure server file is executable
+#### Connection Issues
 
-#### "Tools disabled"
-- Check JSON-RPC protocol implementation
-- Verify tool structure matches MCP specification
-- Review server logs for errors
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| "Connection refused" | Network connectivity | Verify HANA host and port accessibility |
+| "Authentication failed" | Invalid credentials | Check username/password in configuration |
+| "SSL certificate error" | Certificate validation | Configure `HANA_VALIDATE_CERT=false` or install valid certificates |
 
-#### "Connection failed"
-- Verify HANA database credentials
-- Check network connectivity
-- Ensure HANA client libraries are installed
+#### MCP Protocol Issues
 
-#### "Handler is not a function"
-- Check tool definition structure
-- Verify handler function is properly defined
-- Review tool registration process
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| "MCP server not visible" | Configuration path | Verify Claude Desktop config file location |
+| "Tools disabled" | Protocol compliance | Check JSON-RPC implementation and tool structure |
+| "Handler is not a function" | Tool registration | Verify tool implementation and registration |
 
 ### Debugging
 
-#### Enable File Logging
-```bash
-export ENABLE_FILE_LOGGING="true"
-export LOG_LEVEL="debug"
-```
+#### Enable Debug Logging
 
-#### Check Logs
 ```bash
+# Set debug logging
+export LOG_LEVEL="debug"
+export ENABLE_FILE_LOGGING="true"
+export ENABLE_CONSOLE_LOGGING="true"
+
+# Monitor logs
 tail -f hana-mcp-server.log
 ```
 
-#### Test Server Manually
+#### Manual Server Testing
+
 ```bash
-# Test with environment variables
+# Test with minimal configuration
 HANA_HOST="test" HANA_USER="test" HANA_PASSWORD="test" node hana-mcp-server.js
+
+# Test specific functionality
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"hana_test_connection","arguments":{}}}' | node hana-mcp-server.js
 ```
 
-## 📚 MCP Protocol
+### Error Codes
 
-This server implements the Model Context Protocol (MCP) specification:
+The server uses standard JSON-RPC 2.0 error codes:
 
-- **JSON-RPC 2.0**: All communication uses JSON-RPC 2.0
-- **STDIO Transport**: Communication via stdin/stdout
-- **Tool Discovery**: Automatic tool listing and registration
-- **Error Handling**: Proper error codes and messages
-
-### Supported Methods
-
-- `initialize` - Server initialization
-- `tools/list` - List available tools
-- `tools/call` - Execute tools
-- `prompts/list` - List available prompts
-- `notifications/initialized` - Handle initialization notification
+| Code | Description | Action |
+|------|-------------|--------|
+| `-32700` | Parse error | Check JSON format |
+| `-32600` | Invalid request | Verify request structure |
+| `-32601` | Method not found | Check method name |
+| `-32602` | Invalid params | Verify parameter format |
+| `-32603` | Internal error | Check server logs |
 
 ## 🤝 Contributing
 
+We welcome contributions from the community! Please follow these guidelines:
+
+### Contribution Process
+
 1. **Fork the repository**
-2. **Create a feature branch**
-3. **Make your changes**
-4. **Test thoroughly**
-5. **Submit a pull request**
+2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
+3. **Make your changes** following coding standards
+4. **Add tests** for new functionality
+5. **Update documentation** as needed
+6. **Test thoroughly** using MCP Inspector
+7. **Submit a pull request** with detailed description
+
+### Development Guidelines
+
+- **Code Style**: Follow existing code patterns
+- **Testing**: Test new features with MCP Inspector
+- **Documentation**: Update README and inline documentation
+- **Security**: Follow security best practices for database operations
+- **Performance**: Consider performance implications of changes
+
+### Pull Request Template
+
+```markdown
+## Description
+Brief description of changes
+
+## Type of Change
+- [ ] Bug fix
+- [ ] New feature
+- [ ] Documentation update
+- [ ] Performance improvement
+
+## Testing
+- [ ] MCP Inspector tests pass
+- [ ] Manual testing completed
+- [ ] No breaking changes
+
+## Checklist
+- [ ] Code follows existing patterns
+- [ ] Self-review completed
+- [ ] Documentation updated
+- [ ] No breaking changes
+```
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+
+### License Summary
+
+- **Commercial Use**: ✅ Allowed
+- **Modification**: ✅ Allowed
+- **Distribution**: ✅ Allowed
+- **Private Use**: ✅ Allowed
+- **Liability**: ❌ No liability
+- **Warranty**: ❌ No warranty
 
 ## 🙏 Acknowledgments
 
-- SAP for HANA database technology
-- Anthropic for Claude Desktop and MCP specification
-- The MCP community for protocol development
-
-## 📞 Support
-
-For issues and questions:
-- Check the troubleshooting section
-- Review the POC implementations
-- Test with manual commands
-- Check server logs for detailed error information
-
----
+- **SAP** for HANA database technology and support
+- **Anthropic** for Claude Desktop and MCP specification
+- **MCP Community** for protocol development and standards
+- **Open Source Contributors** for valuable feedback and contributions
