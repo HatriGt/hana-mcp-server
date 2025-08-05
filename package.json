@@ -1,11 +1,15 @@
 {
   "name": "hana-mcp-server",
   "version": "0.1.0",
-  "description": "Model Context Protocol server for SAP HANA databases",
-  "main": "src/server/index.js",
+  "description": "🚀 Easy-to-use MCP server for SAP HANA database integration with AI agents like Claude Desktop. Connect to HANA databases with natural language queries.",
+  "main": "hana-mcp-server.js",
+  "bin": {
+    "hana-mcp-server": "hana-mcp-server.js"
+  },
   "scripts": {
     "start": "node hana-mcp-server.js",
-    "dev": "nodemon hana-mcp-server.js"
+    "dev": "nodemon hana-mcp-server.js",
+    "test": "node tests/automated/test-mcp-inspector.js"
   },
   "keywords": [
     "sap",
@@ -15,14 +19,45 @@
     "ai",
     "model",
     "context",
-    "protocol"
+    "protocol",
+    "claude",
+    "anthropic",
+    "enterprise",
+    "sql",
+    "query"
   ],
-  "author": "",
+  "author": {
+    "name": "HANA MCP Server Contributors",
+    "email": "support@hana-mcp-server.com"
+  },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hatrigt/hana-mcp-server.git"
+  },
+  "homepage": "https://github.com/hatrigt/hana-mcp-server#readme",
+  "bugs": {
+    "url": "https://github.com/hatrigt/hana-mcp-server/issues"
+  },
+  "readme": "README.md",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
   "dependencies": {
     "@sap/hana-client": "^2.17.22"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
-  }
+  },
+  "files": [
+    "hana-mcp-server.js",
+    "src/",
+    "README.md",
+    "LICENSE"
+  ]
 }

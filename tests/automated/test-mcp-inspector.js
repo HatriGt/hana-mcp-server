@@ -4,7 +4,7 @@ console.log('🔍 HANA MCP Server Inspector');
 console.log('============================\n');
 
 // Spawn the MCP server process
-const server = spawn('/opt/homebrew/bin/node', ['../../hana-mcp-server.js'], {
+const server = spawn('/opt/homebrew/opt/node@20/bin/node', ['../../hana-mcp-server.js'], {
   stdio: ['pipe', 'pipe', 'pipe'],
   env: {
     HANA_HOST: "your-hana-host.com",

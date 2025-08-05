@@ -1,5 +1,7 @@
 # SAP HANA MCP Server
 
+[![npm version](https://img.shields.io/npm/v/hana-mcp-server.svg)](https://www.npmjs.com/package/hana-mcp-server)
+[![npm downloads](https://img.shields.io/npm/dm/hana-mcp-server.svg)](https://www.npmjs.com/package/hana-mcp-server)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![MCP](https://badge.mcpx.dev?type=server)](https://modelcontextprotocol.io/)
@@ -12,11 +14,10 @@
 - [Key Features](#key-features)
 - [Architecture](#architecture)
 - [Prerequisites](#prerequisites)
-- [Installation](#installation)
+- [Quick Setup](#quick-setup)
 - [Configuration](#configuration)
 - [Usage](#usage)
 - [API Reference](#api-reference)
-- [Testing](#testing)
 - [Development](#development)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
@@ -115,62 +116,27 @@ hana-mcp-server/
 - **VSCode**: For development and testing (optional)
 - **Git**: For version control
 
-## 🚀 Installation
+## 🚀 Quick Setup
 
-### Quick Installation
-
-```bash
-# Clone the repository
-git clone <repository-url>
-cd hana-mcp-server
-
-# Install dependencies
-npm install
-
-# Make server executable
-chmod +x hana-mcp-server.js
-
-# Start the server
-node hana-mcp-server.js
-```
-
-## ⚙️ Configuration
-
-### Environment Configuration
-
-Create a `.env` file or set environment variables:
+### Step 1: Install the Package
 
 ```bash
-# Required: Database Connection
-HANA_HOST=your-hana-host.com
-HANA_PORT=443
-HANA_USER=your-username
-HANA_PASSWORD=your-password
-HANA_SCHEMA=your-default-schema
-
-# Optional: Security & Performance
-HANA_SSL=true
-HANA_ENCRYPT=true
-HANA_VALIDATE_CERT=true
-
-# Optional: Logging Configuration
-LOG_LEVEL=info
-ENABLE_FILE_LOGGING=true
-ENABLE_CONSOLE_LOGGING=false
+npm install -g hana-mcp-server
 ```
 
-### Claude Desktop Configuration
+### Step 2: Configure Claude Desktop
 
-Configure Claude Desktop for MCP integration:
+Update your Claude Desktop configuration file:
+
+**macOS**: `~/.config/claude/claude_desktop_config.json`  
+**Linux**: `~/.config/claude/claude_desktop_config.json`  
+**Windows**: `%APPDATA%\claude\claude_desktop_config.json`
 
 ```json
 {
   "mcpServers": {
-    "SAP HANA Database": {
-      "command": "/usr/local/bin/node",
-      "args": [
-        "/path/to/hana-mcp-server/hana-mcp-server.js"
-      ],
+    "HANA Database": {
+      "command": "hana-mcp-server",
       "env": {
         "HANA_HOST": "your-hana-host.com",
         "HANA_PORT": "443",
@@ -178,37 +144,40 @@ Configure Claude Desktop for MCP integration:
         "HANA_PASSWORD": "your-password",
         "HANA_SCHEMA": "your-schema",
         "HANA_SSL": "true",
-        "LOG_LEVEL": "info",
-        "ENABLE_FILE_LOGGING": "true"
+        "HANA_ENCRYPT": "true",
+        "HANA_VALIDATE_CERT": "true",
+        "LOG_LEVEL": "info"
       }
     }
   }
 }
 ```
 
-**Configuration File Location:**
-- **macOS**: `~/.config/claude/claude_desktop_config.json`
-- **Linux**: `~/.config/claude/claude_desktop_config.json`
-- **Windows**: `%APPDATA%\claude\claude_desktop_config.json`
+### Step 3: Restart Claude Desktop
 
-## 🚀 Usage
+Close and reopen Claude Desktop to load the new configuration.
 
-### Quick Start
+### Step 4: Test Connection
 
-1. **Configure Database Connection**
-   ```bash
-   export HANA_HOST="your-hana-host.com"
-   export HANA_USER="your-username"
-   export HANA_PASSWORD="your-password"
-   ```
+Ask Claude: "Test the HANA database connection" or "Show me the available schemas"
 
-2. **Start Server**
-   ```bash
-   node hana-mcp-server.js
-   ```
+That's it! 🎉 Your HANA MCP Server is now ready to use.
 
-3. **Test Connection**
-   Use the `hana_test_connection` tool through Claude Desktop or MCP Inspector
+## ⚙️ Configuration
+
+### Environment Variables
+
+| Variable | Required | Description | Default |
+|----------|----------|-------------|---------|
+| `HANA_HOST` | ✅ | HANA database hostname | - |
+| `HANA_PORT` | ✅ | HANA database port | `443` |
+| `HANA_USER` | ✅ | Database username | - |
+| `HANA_PASSWORD` | ✅ | Database password | - |
+| `HANA_SCHEMA` | ❌ | Default schema | - |
+| `HANA_SSL` | ❌ | Enable SSL connection | `true` |
+| `HANA_ENCRYPT` | ❌ | Enable encryption | `true` |
+| `HANA_VALIDATE_CERT` | ❌ | Validate SSL certificate | `true` |
+| `LOG_LEVEL` | ❌ | Logging level | `info` |
 
 ### Default Schema Behavior
 
@@ -220,16 +189,31 @@ The server intelligently handles schema selection:
 | `HANA_SCHEMA` not set | Requires explicit schema specification |
 | Schema parameter provided | Overrides default schema |
 
-**Examples:**
-```json
-// With HANA_SCHEMA="MY_SCHEMA"
-{"name":"hana_list_tables","arguments":{}}  // Uses MY_SCHEMA
+## 🚀 Usage
 
-// Override default schema
-{"name":"hana_list_tables","arguments":{"schema_name":"CUSTOM_SCHEMA"}}
+### Claude Desktop Integration
 
-// Without HANA_SCHEMA (requires explicit schema)
-{"name":"hana_list_tables","arguments":{"schema_name":"MY_SCHEMA"}}
+Once configured, you can interact with your HANA database using natural language:
+
+- **"Show me all schemas in the database"**
+- **"List tables in the SYSTEM schema"**
+- **"Describe the structure of table CUSTOMERS"**
+- **"Execute this query: SELECT * FROM SYSTEM.TABLES LIMIT 10"**
+- **"Get sample data from table ORDERS"**
+
+### Command Line Usage
+
+You can also run the server directly:
+
+```bash
+# Start with environment variables
+HANA_HOST="your-host" HANA_USER="your-user" HANA_PASSWORD="your-pass" hana-mcp-server
+
+# Or set environment variables first
+export HANA_HOST="your-host"
+export HANA_USER="your-user"
+export HANA_PASSWORD="your-pass"
+hana-mcp-server
 ```
 
 ## 📚 API Reference
@@ -286,96 +270,16 @@ All tools return standardized JSON responses:
 }
 ```
 
-## 🧪 Testing
-
-### Testing Framework Overview
-
-The project includes a comprehensive testing suite with multiple validation methods:
-
-```
-tests/
-├── 🧪 automated/           # Automated test suite
-├── 🖱️ manual/             # Manual testing tools
-├── 🔍 mcpInspector/       # MCP Inspector configuration
-└── 📋 README.md           # Testing documentation
-```
-
-### 1. MCP Inspector Testing (Recommended)
-
-**Web-based interactive testing interface:**
-
-```bash
-# Open MCP Inspector
-open https://modelcontextprotocol.io/inspector
-
-# Use configuration from tests/mcpInspector/mcp-inspector-config.json
-```
-
-**Benefits:**
-- Visual tool discovery and testing
-- Real-time request/response inspection
-- Protocol compliance validation
-- Interactive debugging capabilities
-
-### 2. Automated Testing
-
-**Run comprehensive test suite:**
-
-```bash
-# Navigate to test directory
-cd tests/automated
-
-# Run automated tests
-node test-mcp-inspector.js
-
-# Run with specific configuration
-HANA_HOST="test" HANA_USER="test" node test-mcp-inspector.js
-```
-
-### 3. Manual Testing
-
-**Interactive command-line testing:**
-
-```bash
-# Navigate to manual test directory
-cd tests/manual
-
-# Start interactive testing
-node manual-test.js
-```
-
-### 4. Quick Validation Tests
-
-**Test server functionality manually:**
-
-```bash
-# Test initialization
-echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' | node hana-mcp-server.js
-
-# Test tools listing
-echo '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | node hana-mcp-server.js
-
-# Test tool execution
-HANA_HOST="test" HANA_USER="test" HANA_PASSWORD="test" echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"hana_show_config","arguments":{}}}' | node hana-mcp-server.js
-```
-
-### Integration Testing
-
-1. **Configure Claude Desktop** with MCP server settings
-2. **Restart Claude Desktop** to load new configuration
-3. **Test connection** using AI agent commands
-4. **Verify tool functionality** through natural language interaction
-
 ## 🔧 Development
 
 ### Development Setup
 
 ```bash
 # Clone repository
-git clone <repository-url>
+git clone https://github.com/hatrigt/hana-mcp-server.git
 cd hana-mcp-server
 
-# Install development dependencies
+# Install dependencies
 npm install
 
 # Start development server with auto-reload
@@ -451,22 +355,14 @@ const TOOL_IMPLEMENTATIONS = {
 }
 ```
 
-#### 4. Test Implementation
-
-```bash
-# Test new tool using MCP Inspector
-# Or run manual tests
-cd tests/manual
-node manual-test.js
-```
-
 ### Development Scripts
 
 ```json
 {
   "scripts": {
     "start": "node hana-mcp-server.js",
-    "dev": "nodemon hana-mcp-server.js"
+    "dev": "nodemon hana-mcp-server.js",
+    "test": "node tests/automated/test-mcp-inspector.js"
   }
 }
 ```
@@ -509,10 +405,10 @@ tail -f hana-mcp-server.log
 
 ```bash
 # Test with minimal configuration
-HANA_HOST="test" HANA_USER="test" HANA_PASSWORD="test" node hana-mcp-server.js
+HANA_HOST="test" HANA_USER="test" HANA_PASSWORD="test" hana-mcp-server
 
 # Test specific functionality
-echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"hana_test_connection","arguments":{}}}' | node hana-mcp-server.js
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"hana_test_connection","arguments":{}}}' | hana-mcp-server
 ```
 
 ### Error Codes

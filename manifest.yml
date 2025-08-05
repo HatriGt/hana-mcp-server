@@ -1,0 +1,12 @@
+applications:
+- name: hana-mcp-server
+  memory: 256M
+  disk_quota: 512M
+  instances: 1
+  buildpack: nodejs_buildpack
+  command: node hana-mcp-server.js
+  env:
+    NODE_ENV: production
+    PORT: 8080
+  services:
+    - hana-service  # Your HANA service instance name 
