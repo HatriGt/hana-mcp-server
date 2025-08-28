@@ -76,7 +76,8 @@ echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"hana_show_
         "HANA_SCHEMA": "your-schema",
         "HANA_SSL": "true",
         "HANA_ENCRYPT": "true",
-        "HANA_VALIDATE_CERT": "true"
+        "HANA_VALIDATE_CERT": "true",
+        "HANA_DATABASE": "your-tenant-database"
       }
     }
   }
@@ -93,6 +94,7 @@ HANA_SCHEMA=your-schema
 HANA_SSL=true
 HANA_ENCRYPT=true
 HANA_VALIDATE_CERT=true
+HANA_DATABASE=your-tenant-database
 ```
 
 ## 🧪 Test Scenarios

@@ -15,7 +15,8 @@ const server = spawn('/opt/homebrew/bin/node', ['../../hana-mcp-server.js'], {
     HANA_SCHEMA: "your-schema",
     HANA_SSL: "true",
     HANA_ENCRYPT: "true",
-    HANA_VALIDATE_CERT: "true"
+    HANA_VALIDATE_CERT: "true",
+    HANA_DATABASE: "your-tenant-database"
   }
 });
 
