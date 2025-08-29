@@ -48,6 +48,7 @@ class Formatters {
       `Password: ${config.password}`,
       `Schema: ${config.schema}`,
       `SSL: ${config.ssl}`,
+      `database: ${config.database}`,
       ''
     ];
 
@@ -263,6 +264,7 @@ class Formatters {
       lines.push(`- User: ${config.user}`);
       lines.push(`- Schema: ${config.schema || 'default'}`);
       lines.push(`- SSL: ${config.ssl ? 'enabled' : 'disabled'}`);
+      lines.push(`- database: ${config.database}`);
 
       return lines.join('\n');
     }
@@ -275,7 +277,8 @@ class Formatters {
       `- Port: ${config.port}`,
       `- User: ${config.user}`,
       `- Schema: ${config.schema || 'default'}`,
-      `- SSL: ${config.ssl ? 'enabled' : 'disabled'}`
+      `- SSL: ${config.ssl ? 'enabled' : 'disabled'}`,
+      `- database: ${config.database}`
     ];
 
     if (testResult) {

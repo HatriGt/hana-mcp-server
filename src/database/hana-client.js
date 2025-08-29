@@ -20,6 +20,7 @@ async function createHanaClient(config) {
       pwd: config.password,
       encrypt: config.encrypt !== false, // Default to true
       sslValidateCertificate: config.validateCert !== false, // Default to true
+      databaseName: config.database,
       ...config.additionalParams
     };
     

@@ -65,6 +65,7 @@ All tests require these environment variables:
 - `HANA_SSL`: SSL enabled (true/false)
 - `HANA_ENCRYPT`: Encryption enabled (true/false)
 - `HANA_VALIDATE_CERT`: Certificate validation (true/false)
+- `HANA_DATABASE`: HANA tenant database
 
 ## Quick Start
 

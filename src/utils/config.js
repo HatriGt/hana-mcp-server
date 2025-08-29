@@ -19,7 +19,8 @@ class Config {
         schema: process.env.HANA_SCHEMA,
         ssl: process.env.HANA_SSL !== 'false',
         encrypt: process.env.HANA_ENCRYPT !== 'false',
-        validateCert: process.env.HANA_VALIDATE_CERT !== 'false'
+        validateCert: process.env.HANA_VALIDATE_CERT !== 'false',
+        database: process.env.HANA_DATABASE
       },
       server: {
         logLevel: process.env.LOG_LEVEL || 'INFO',
@@ -58,7 +59,8 @@ class Config {
       schema: hana.schema || 'NOT SET',
       ssl: hana.ssl,
       encrypt: hana.encrypt,
-      validateCert: hana.validateCert
+      validateCert: hana.validateCert,
+      database: hana.database || 'NOT SET'
     };
   }
 
@@ -72,7 +74,8 @@ class Config {
       HANA_SCHEMA: process.env.HANA_SCHEMA || 'NOT SET',
       HANA_SSL: process.env.HANA_SSL || 'NOT SET',
       HANA_ENCRYPT: process.env.HANA_ENCRYPT || 'NOT SET',
-      HANA_VALIDATE_CERT: process.env.HANA_VALIDATE_CERT || 'NOT SET'
+      HANA_VALIDATE_CERT: process.env.HANA_VALIDATE_CERT || 'NOT SET',
+      HANA_DATABASE: process.env.HANA_DATABASE || 'NOT SET'
     };
   }
 
@@ -84,6 +87,7 @@ class Config {
     if (!hana.host) errors.push('HANA_HOST is required');
     if (!hana.user) errors.push('HANA_USER is required');
     if (!hana.password) errors.push('HANA_PASSWORD is required');
+    // if (!hana.database) errors.push('HANA_DATABASE is required');
 
     if (errors.length > 0) {
       logger.warn('Configuration validation failed:', errors);
