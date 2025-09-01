@@ -178,7 +178,7 @@ That's it! 🎉 Your HANA MCP Server is now ready to use.
 | `HANA_SSL` | ❌ | Enable SSL connection | `true` |
 | `HANA_ENCRYPT` | ❌ | Enable encryption | `true` |
 | `HANA_VALIDATE_CERT` | ❌ | Validate SSL certificate | `true` |
-| `HANA_DATABASE` | ❌ | HANA tenant database | `info` |
+| `HANA_DATABASE` | ❌ | HANA tenant database | - |
 | `LOG_LEVEL` | ❌ | Logging level | `info` |
 
 ### Default Schema Behavior
