@@ -1,0 +1,53 @@
+{
+  "name": "hana-mcp-ui",
+  "version": "1.0.7",
+  "description": "UI for managing HANA MCP server configurations with Claude Desktop integration",
+  "type": "module",
+  "main": "bin/cli.js",
+  "bin": {
+    "hana-mcp-ui": "bin/cli.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "dev": "node start.js",
+    "dev:safe": "./start-dev.sh",
+    "dev:old": "node bin/cli.js",
+    "vite": "vite",
+    "build": "bun run vite build",
+    "preview": "bun run vite preview"
+  },
+  "dependencies": {
+    "@heroicons/react": "^2.2.0",
+    "@tailwindcss/forms": "^0.5.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "autoprefixer": "^10.4.16",
+    "axios": "^1.11.0",
+    "chalk": "^5.5.0",
+    "clsx": "^2.0.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "framer-motion": "^12.23.12",
+    "fs-extra": "^11.3.1",
+    "open": "^10.2.0",
+    "postcss": "^8.4.32",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-hot-toast": "^2.5.2",
+    "tailwind-merge": "^2.3.0",
+    "tailwindcss": "^3.4.0",
+    "vite": "^7.1.3"
+  },
+  "keywords": [
+    "hana",
+    "mcp",
+    "claude",
+    "database",
+    "ui",
+    "react",
+    "management"
+  ],
+  "author": "HANA MCP Team",
+  "license": "MIT"
+}

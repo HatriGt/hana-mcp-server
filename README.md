@@ -8,13 +8,14 @@
 
 > **Model Context Protocol (MCP) server for seamless SAP HANA database integration with AI agents and development tools.**
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Overview](#overview)
 - [Key Features](#key-features)
 - [Architecture](#architecture)
 - [Prerequisites](#prerequisites)
 - [Quick Setup](#quick-setup)
+- [Configure Using UI](#ui-management)
 - [Configuration](#configuration)
 - [Usage](#usage)
 - [API Reference](#api-reference)
@@ -22,10 +23,17 @@
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
 - [License](#license)
+- [Acknowledgments](#acknowledgments)
 
 ## 🎯 Overview
 
+<a name="overview"></a>
+
 The SAP HANA MCP Server provides a robust, production-ready bridge between AI applications and SAP HANA databases through the Model Context Protocol (MCP). Designed for enterprise environments, it offers comprehensive database management capabilities with secure, scalable architecture.
+
+**Available in two formats:**
+- **CLI Server**: Command-line interface for direct integration
+- **Web UI**: Professional React interface for visual configuration management
 
 ### Supported Platforms
 - **AI Agents**: Custom AI Applications, Claude Desktop, VSCode Extensions 
@@ -35,30 +43,34 @@ The SAP HANA MCP Server provides a robust, production-ready bridge between AI ap
 
 ## ✨ Key Features
 
-### 🔐 Enterprise Security
+<a name="key-features"></a>
+
+### Enterprise Security
 - **Secure Credential Management**: Environment-based configuration
 - **SSL/TLS Support**: Full encryption for database communications
 - **Certificate Validation**: Configurable certificate verification
 
-### 🗄️ Database Operations
+### Database Operations
 - **Schema Exploration**: Complete database schema discovery and navigation
 - **Query Execution**: Advanced SQL query execution with parameterized support
 - **Administrative Tools**: System monitoring, user management, and performance insights
 - **Data Management**: Sample data retrieval, row counting, and metadata analysis
 
-### 🏗️ Architecture Excellence
+### Architecture Excellence
 - **Modular Design**: Clean separation of concerns with maintainable codebase
 - **Scalable Architecture**: Easy extension and customization for enterprise needs
 - **Comprehensive Logging**: Structured logging with configurable levels
 - **Error Handling**: Robust error management with detailed diagnostics
 
-### 🔧 Developer Experience
+### Developer Experience
 - **MCP Protocol Compliance**: Full Model Context Protocol 2.0 implementation
 - **Tool Discovery**: Automatic tool registration and discovery
 - **JSON-RPC 2.0**: Standardized communication protocol
 - **Testing Framework**: Comprehensive testing suite with multiple validation methods
 
 ## 🏗️ Architecture
+
+<a name="architecture"></a>
 
 ### System Architecture
 
@@ -100,6 +112,8 @@ hana-mcp-server/
 
 ## 📋 Prerequisites
 
+<a name="prerequisites"></a>
+
 ### System Requirements
 - **Node.js**: Version 18.x or higher
 - **Memory**: Minimum 512MB RAM (2GB recommended)
@@ -117,6 +131,8 @@ hana-mcp-server/
 - **Git**: For version control
 
 ## 🚀 Quick Setup
+
+<a name="quick-setup"></a>
 
 ### Step 1: Install the Package
 
@@ -163,7 +179,42 @@ Ask Claude: "Test the HANA database connection" or "Show me the available schema
 
 That's it! 🎉 Your HANA MCP Server is now ready to use.
 
+## 🖥️ Configure Using UI
+
+<a name="ui-management"></a>
+
+For users who prefer a graphical interface, there is a **HANA MCP UI** - a React-based web application for managing server configurations.
+
+![HANA MCP UI](docs/hana_mcp_ui.gif)
+
+### 🌟 Why Use the UI?
+
+- **Visual Configuration**: Intuitive web interface for server management
+- **Multi-Environment Support**: Configure Production, Development, and Staging environments
+- **Claude Desktop Integration**: Deploy configurations directly to Claude Desktop
+- **Real-time Monitoring**: Visual status tracking of active servers
+- **Backup & Restore**: Configuration management with history
+
+### 🚀 Quick UI Setup
+
+```bash
+# Install and run the UI in one command
+npx hana-mcp-ui
+```
+
+The UI will automatically:
+1. Start a local web server on port 3001
+2. Open your browser to the configuration interface
+3. Guide you through server setup and Claude Desktop integration
+
+### 📚 UI Documentation
+
+For detailed UI documentation, configuration schemas, and advanced features, visit:
+**[HANA MCP UI Documentation](https://www.npmjs.com/package/hana-mcp-ui)**
+
 ## ⚙️ Configuration
+
+<a name="configuration"></a>
 
 ### Environment Variables
 
@@ -191,6 +242,8 @@ The server intelligently handles schema selection:
 
 ## 🚀 Usage
 
+<a name="usage"></a>
+
 ### Claude Desktop Integration
 
 Once configured, you can interact with your HANA database using natural language:
@@ -217,6 +270,8 @@ hana-mcp-server
 ```
 
 ## 📚 API Reference
+
+<a name="api-reference"></a>
 
 ### Configuration Tools
 
@@ -271,6 +326,8 @@ All tools return standardized JSON responses:
 ```
 
 ## 🔧 Development
+
+<a name="development"></a>
 
 ### Development Setup
 
@@ -369,6 +426,8 @@ const TOOL_IMPLEMENTATIONS = {
 
 ## 🐛 Troubleshooting
 
+<a name="troubleshooting"></a>
+
 ### Common Issues & Solutions
 
 #### Connection Issues
@@ -425,6 +484,8 @@ The server uses standard JSON-RPC 2.0 error codes:
 
 ## 🤝 Contributing
 
+<a name="contributing"></a>
+
 We welcome contributions from the community! Please follow these guidelines:
 
 ### Contribution Process
@@ -447,29 +508,18 @@ We welcome contributions from the community! Please follow these guidelines:
 
 ### Pull Request Template
 
-```markdown
-## Description
-Brief description of changes
+We use a standardized PR template. When you create a pull request, GitHub will automatically load the template with the following sections:
 
-## Type of Change
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Documentation update
-- [ ] Performance improvement
+- **Description**: Brief description of changes
+- **Type of Change**: Bug fix, new feature, documentation, or performance improvement
+- **Testing**: MCP Inspector tests, manual testing, and breaking change verification
+- **Checklist**: Code review, documentation, and quality checks
 
-## Testing
-- [ ] MCP Inspector tests pass
-- [ ] Manual testing completed
-- [ ] No breaking changes
-
-## Checklist
-- [ ] Code follows existing patterns
-- [ ] Self-review completed
-- [ ] Documentation updated
-- [ ] No breaking changes
-```
+The template is located at `.github/pull_request_template.md`
 
 ## 📄 License
+
+<a name="license"></a>
 
 This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
@@ -483,6 +533,8 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 - **Warranty**: ❌ No warranty
 
 ## 🙏 Acknowledgments
+
+<a name="acknowledgments"></a>
 
 - **SAP** for HANA database technology and support
 - **Anthropic** for Claude Desktop and MCP specification
