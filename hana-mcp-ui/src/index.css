@@ -1,0 +1,469 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Professional Light Theme Base Styles */
+@layer base {
+  * {
+    @apply border-gray-200;
+  }
+  
+  html {
+    @apply scroll-smooth overflow-hidden;
+  }
+  
+  body {
+    @apply bg-gray-100 text-gray-900 font-sans;
+    @apply h-screen overflow-hidden;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Enhanced Typography System */
+  h1, .h1 {
+    @apply text-4xl font-bold text-gray-900 leading-tight tracking-tight;
+  }
+  
+  h2, .h2 {
+    @apply text-3xl font-semibold text-gray-800 leading-tight tracking-tight;
+  }
+  
+  h3, .h3 {
+    @apply text-2xl font-semibold text-gray-800 leading-snug tracking-tight;
+  }
+  
+  h4, .h4 {
+    @apply text-xl font-medium text-gray-700 leading-snug;
+  }
+  
+  h5, .h5 {
+    @apply text-lg font-medium text-gray-700 leading-normal;
+  }
+  
+  h6, .h6 {
+    @apply text-base font-medium text-gray-700 leading-normal;
+  }
+
+  /* Body text styles */
+  p, .body-text {
+    @apply text-base text-gray-600 leading-relaxed;
+  }
+  
+  .body-text-sm {
+    @apply text-sm text-gray-600 leading-relaxed;
+  }
+  
+  .body-text-lg {
+    @apply text-lg text-gray-600 leading-relaxed;
+  }
+
+  /* Special text styles */
+  .display-text {
+    @apply text-5xl font-black text-gray-900 leading-none tracking-tight;
+  }
+  
+  .hero-text {
+    @apply text-6xl font-black text-gray-900 leading-none tracking-tight;
+  }
+  
+  .caption-text {
+    @apply text-sm font-medium text-gray-500 leading-tight;
+  }
+  
+  .label-text {
+    @apply text-sm font-semibold text-gray-700 uppercase tracking-wide;
+  }
+
+  /* Link styles */
+  a {
+    @apply text-blue-600 hover:text-blue-700 transition-colors duration-200;
+  }
+  
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    @apply w-2;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-100;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400;
+  }
+  
+  /* Enhanced scrollbar for modal content */
+  .modal-scrollbar::-webkit-scrollbar {
+    @apply w-3;
+  }
+  
+  .modal-scrollbar::-webkit-scrollbar-track {
+    @apply bg-gray-100 rounded-lg;
+  }
+  
+  .modal-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-lg;
+  }
+  
+  .modal-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-500;
+  }
+  
+  .modal-scrollbar::-webkit-scrollbar-corner {
+    @apply bg-transparent;
+  }
+}
+
+@layer components {
+  /* Professional Light Card Base */
+  .glass-card {
+    @apply bg-white rounded-2xl border border-gray-200;
+    @apply shadow-sm shadow-gray-100/50 transition-all duration-300;
+    @apply hover:shadow-md hover:shadow-gray-200/60 hover:-translate-y-0.5;
+  }
+  
+  .glass-card-primary {
+    @apply bg-blue-50 border-blue-200/60;
+  }
+  
+  .glass-card-success {
+    @apply bg-emerald-50 border-emerald-200/60;
+  }
+  
+  .glass-card-warning {
+    @apply bg-amber-50 border-amber-200/60;
+  }
+  
+  .glass-card-danger {
+    @apply bg-red-50 border-red-200/60;
+  }
+  
+  /* Professional Buttons - Matching Image Theme */
+  .btn-gradient {
+    @apply relative inline-flex items-center justify-center gap-2;
+    @apply rounded-lg font-semibold px-6 py-2.5;
+    @apply transition-all duration-200 overflow-hidden;
+    @apply hover:-translate-y-0.5 active:translate-y-0 active:scale-95;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+  }
+  
+  .btn-primary {
+    @apply bg-[#86a0ff] text-white;
+    @apply shadow-sm hover:shadow-md hover:bg-[#7990e6];
+    @apply hover:shadow-[#86a0ff]/20;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-100 border border-gray-200 text-gray-700;
+    @apply shadow-sm hover:shadow-md hover:bg-gray-200;
+    @apply hover:border-gray-300;
+  }
+  
+  .btn-success {
+    @apply bg-emerald-600 text-white;
+    @apply shadow-sm hover:shadow-md hover:bg-emerald-700;
+    @apply hover:shadow-emerald-200/60;
+  }
+  
+  .btn-danger {
+    @apply bg-red-600 text-white;
+    @apply shadow-sm hover:shadow-md hover:bg-red-700;
+    @apply hover:shadow-red-200/60;
+  }
+
+  .btn-warning {
+    @apply bg-amber-500 text-white;
+    @apply shadow-sm hover:shadow-md hover:bg-amber-600;
+    @apply hover:shadow-amber-200/60;
+  }
+
+  .btn-light {
+    @apply bg-gray-100 border border-gray-200 text-gray-700;
+    @apply shadow-sm hover:shadow-md hover:bg-gray-200;
+    @apply hover:border-gray-300;
+  }
+  
+  /* Form Elements */
+  .form-input {
+    @apply w-full px-4 py-3 bg-white border border-gray-300;
+    @apply rounded-lg text-gray-900 placeholder-gray-500;
+    @apply transition-all duration-200 font-medium;
+    @apply focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20;
+    @apply focus:outline-none;
+  }
+  
+  .form-select {
+    @apply form-input;
+    @apply appearance-none bg-no-repeat bg-right bg-[length:16px];
+    @apply bg-[url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")];
+  }
+  
+  .form-checkbox {
+    @apply w-4 h-4 text-blue-600 bg-white border-gray-300;
+    @apply rounded focus:ring-blue-500/20 focus:ring-2;
+  }
+  
+  /* Status Badges - Matching Image Colors */
+  .status-badge {
+    @apply inline-flex items-center gap-2 px-3 py-1 rounded-full;
+    @apply text-sm font-semibold border;
+  }
+  
+  .status-online {
+    @apply bg-emerald-100 text-emerald-800 border-emerald-200;
+  }
+  
+  .status-offline {
+    @apply bg-gray-100 text-gray-700 border-gray-200;
+  }
+  
+  .status-warning {
+    @apply bg-amber-100 text-amber-800 border-amber-200;
+  }
+  
+  .status-error {
+    @apply bg-red-100 text-red-800 border-red-200;
+  }
+
+  .status-pending {
+    @apply bg-amber-100 text-amber-800 border-amber-200;
+  }
+
+  .status-done {
+    @apply bg-blue-100 text-blue-800 border-blue-200;
+  }
+  
+  /* Environment Badges */
+  .env-production {
+    @apply bg-red-100 border-red-300 text-red-800;
+  }
+  
+  .env-development {
+    @apply bg-blue-100 border-blue-300 text-blue-800;
+  }
+  
+  .env-staging {
+    @apply bg-amber-100 border-amber-300 text-amber-800;
+  }
+
+  /* Dashboard-specific typography classes */
+  .metric-value {
+    @apply text-3xl font-bold text-gray-900 leading-none tracking-tight;
+  }
+  
+  .metric-label {
+    @apply text-sm font-semibold text-gray-600 uppercase tracking-wide;
+  }
+  
+  .metric-description {
+    @apply text-sm font-medium text-gray-500 leading-relaxed;
+  }
+  
+  .card-title {
+    @apply text-lg font-semibold text-gray-800 leading-tight;
+  }
+  
+  .card-subtitle {
+    @apply text-sm font-medium text-gray-600 leading-relaxed;
+  }
+  
+  .table-header {
+    @apply text-sm font-semibold text-gray-700 uppercase tracking-wide;
+  }
+  
+  .table-cell {
+    @apply text-sm font-medium text-gray-600 leading-relaxed;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-[#86a0ff] to-[#7990e6] bg-clip-text text-transparent;
+  }
+  
+  .border-gradient {
+    @apply bg-gradient-to-r from-blue-200/50 to-blue-300/50;
+    @apply border border-transparent bg-clip-padding;
+  }
+  
+  /* Animation utilities */
+  .animate-in {
+    @apply animate-fade-in;
+  }
+  
+  .animate-up {
+    @apply animate-slide-up;
+  }
+  
+  .animate-glow {
+    @apply animate-pulse-glow;
+  }
+  
+  .animate-float {
+    @apply animate-float;
+  }
+
+  /* Typography utilities */
+  .font-thin {
+    font-weight: 100;
+  }
+  
+  .font-extralight {
+    font-weight: 200;
+  }
+  
+  .font-light {
+    font-weight: 300;
+  }
+  
+  .font-normal {
+    font-weight: 400;
+  }
+  
+  .font-medium {
+    font-weight: 500;
+  }
+  
+  .font-semibold {
+    font-weight: 600;
+  }
+  
+  .font-bold {
+    font-weight: 700;
+  }
+  
+  .font-extrabold {
+    font-weight: 800;
+  }
+  
+  .font-black {
+    font-weight: 900;
+  }
+}
+
+/* Custom background patterns */
+.bg-dots {
+  background-image: radial-gradient(circle, rgba(99, 102, 241, 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Glass window specific styles */
+.glass-window {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Perfect centering for glass window */
+.glass-window-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 1rem;
+}
+
+.glass-window-content {
+  width: 100%;
+  max-width: 110rem; /* 8xl - maximum width */
+  height: calc(100vh - 2rem);
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* Ensure content is contained within the glass window */
+.glass-window-content * {
+  box-sizing: border-box;
+}
+
+/* Prevent content overflow */
+.glass-window-content > div {
+  max-width: 100%;
+  overflow: visible;
+}
+
+/* Custom scrollbar for database list */
+.database-list-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+}
+
+.database-list-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.database-list-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.database-list-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.5);
+  border-radius: 3px;
+}
+
+.database-list-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.7);
+}
+
+/* Custom scrollbar for Claude table */
+.claude-table-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+}
+
+.claude-table-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.claude-table-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.claude-table-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.5);
+  border-radius: 3px;
+}
+
+.claude-table-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.7);
+}
+
+
+
+.bg-grid {
+  background-image: 
+    linear-gradient(rgba(99, 102, 241, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99, 102, 241, 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Loading spinner */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-spinner {
+  @apply inline-block w-6 h-6 border-2 border-gray-200 border-t-blue-600 rounded-full;
+  animation: spin 1s linear infinite;
+}
+/* Shine effect for buttons */
+.btn-shine::before {
+  content: '';
+  @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent;
+  @apply opacity-0 transition-all duration-500 -skew-x-12;
+  transform: translateX(-100%);
+}
+
+.btn-shine:hover::before {
+  @apply opacity-100;
+  transform: translateX(100%);
+}
