@@ -162,6 +162,7 @@ Update your Claude Desktop configuration file:
         "HANA_SSL": "true",
         "HANA_ENCRYPT": "true",
         "HANA_VALIDATE_CERT": "true",
+        "HANA_DATABASE": "your-tenant-database",
         "LOG_LEVEL": "info"
       }
     }
@@ -228,6 +229,7 @@ For detailed UI documentation, configuration schemas, and advanced features, vis
 | `HANA_SSL` | ❌ | Enable SSL connection | `true` |
 | `HANA_ENCRYPT` | ❌ | Enable encryption | `true` |
 | `HANA_VALIDATE_CERT` | ❌ | Validate SSL certificate | `true` |
+| `HANA_DATABASE` | ❌ | HANA tenant database | - |
 | `LOG_LEVEL` | ❌ | Logging level | `info` |
 
 ### Default Schema Behavior
