@@ -84,6 +84,34 @@ class ToolRegistry {
   }
 
   /**
+   * Get tools with cursor-based pagination.
+   * @param {string} [cursor] - Opaque cursor from previous page
+   * @param {number} [pageSize=50] - Max tools per page
+   * @returns {{ tools: object[], nextCursor?: string }}
+   */
+  static getToolsPaginated(cursor, pageSize = 50) {
+    const all = TOOLS;
+    let start = 0;
+    if (cursor) {
+      try {
+        const decoded = Buffer.from(cursor, 'base64').toString('utf8');
+        const parsed = JSON.parse(decoded);
+        if (typeof parsed.offset === 'number' && parsed.offset >= 0) {
+          start = Math.min(parsed.offset, all.length);
+        }
+      } catch (_) {
+        start = 0;
+      }
+    }
+    const page = all.slice(start, start + pageSize);
+    const hasMore = start + page.length < all.length;
+    const nextCursor = hasMore
+      ? Buffer.from(JSON.stringify({ offset: start + page.length }), 'utf8').toString('base64')
+      : undefined;
+    return { tools: page, nextCursor };
+  }
+
+  /**
    * Validate tool arguments against schema
    */
   static validateToolArgs(name, args) {

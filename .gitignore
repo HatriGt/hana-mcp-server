@@ -52,3 +52,5 @@ image.png
 .qod*
 hana-mcp-ui/bun.lock
 hana-mcp-ui/bun.lockb
+Agent*
+.cur*

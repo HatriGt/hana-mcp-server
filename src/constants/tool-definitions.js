@@ -8,7 +8,14 @@
 const TOOLS = [
   {
     name: "hana_show_config",
+    title: "Show HANA configuration",
     description: "Show the HANA database configuration",
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    },
     inputSchema: {
       type: "object",
       properties: {},
@@ -17,7 +24,14 @@ const TOOLS = [
   },
   {
     name: "hana_test_connection",
+    title: "Test HANA connection",
     description: "Test connection to HANA database",
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    },
     inputSchema: {
       type: "object",
       properties: {},
@@ -26,7 +40,14 @@ const TOOLS = [
   },
   {
     name: "hana_list_schemas",
+    title: "List HANA schemas",
     description: "List all schemas in the HANA database",
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    },
     inputSchema: {
       type: "object",
       properties: {},
@@ -35,7 +56,14 @@ const TOOLS = [
   },
   {
     name: "hana_show_env_vars",
+    title: "Show HANA env vars",
     description: "Show all HANA-related environment variables (for debugging)",
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    },
     inputSchema: {
       type: "object",
       properties: {},
@@ -44,7 +72,14 @@ const TOOLS = [
   },
   {
     name: "hana_list_tables",
+    title: "List tables in schema",
     description: "List all tables in a specific schema",
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    },
     inputSchema: {
       type: "object",
       properties: {
@@ -58,7 +93,14 @@ const TOOLS = [
   },
   {
     name: "hana_describe_table",
+    title: "Describe table structure",
     description: "Describe the structure of a specific table",
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    },
     inputSchema: {
       type: "object",
       properties: {
@@ -76,7 +118,14 @@ const TOOLS = [
   },
   {
     name: "hana_list_indexes",
+    title: "List table indexes",
     description: "List all indexes for a specific table",
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    },
     inputSchema: {
       type: "object",
       properties: {
@@ -94,7 +143,14 @@ const TOOLS = [
   },
   {
     name: "hana_describe_index",
+    title: "Describe table index",
     description: "Describe the structure of a specific index",
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    },
     inputSchema: {
       type: "object",
       properties: {
@@ -116,7 +172,15 @@ const TOOLS = [
   },
   {
     name: "hana_execute_query",
+    title: "Execute SQL query",
     description: "Execute a custom SQL query against the HANA database",
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: false
+    },
+    execution: { taskSupport: 'optional' },
     inputSchema: {
       type: "object",
       properties: {

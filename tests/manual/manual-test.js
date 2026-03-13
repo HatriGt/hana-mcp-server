@@ -1,21 +1,17 @@
+const path = require('path');
 const { spawn } = require('child_process');
 const readline = require('readline');
 
 console.log('🔍 HANA MCP Server Manual Tester');
 console.log('================================\n');
 
-// Spawn the MCP server process
-const server = spawn('/opt/homebrew/bin/node', ['../../hana-mcp-server.js'], {
+// Spawn the MCP server process from the project root, using current Node and env
+const serverScript = path.join(__dirname, '..', '..', 'hana-mcp-server.js');
+const server = spawn(process.execPath, [serverScript], {
   stdio: ['pipe', 'pipe', 'pipe'],
+  cwd: path.join(__dirname, '..', '..'),
   env: {
-    HANA_HOST: "your-hana-host.com",
-    HANA_PORT: "443",
-    HANA_USER: "your-username",
-    HANA_PASSWORD: "your-password",
-    HANA_SCHEMA: "your-schema",
-    HANA_SSL: "true",
-    HANA_ENCRYPT: "true",
-    HANA_VALIDATE_CERT: "true"
+    ...process.env
   }
 });
 

@@ -1,6 +1,6 @@
 {
   "name": "hana-mcp-server",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "description": "🚀 Easy-to-use MCP server for SAP HANA database integration with AI agents like Claude Desktop. Connect to HANA databases with natural language queries.",
   "main": "hana-mcp-server.js",
   "bin": {
@@ -8,8 +8,12 @@
   },
   "scripts": {
     "start": "node hana-mcp-server.js",
+    "start:http": "node src/server/http-index.js",
     "dev": "nodemon hana-mcp-server.js",
-    "test": "node tests/automated/test-mcp-inspector.js"
+    "test": "node tests/automated/test-mcp-inspector.js && node tests/automated/test-new-features.js",
+    "test:new": "node tests/automated/test-new-features.js",
+    "test:all-tools": "node tests/automated/test-all-tools.js",
+    "test:query-once": "node tests/automated/run-query-once.js"
   },
   "keywords": [
     "sap",

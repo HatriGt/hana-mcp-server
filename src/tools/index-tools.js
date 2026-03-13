@@ -58,9 +58,10 @@ class IndexTools {
       const indexMap = {};
       results.forEach(row => {
         if (!indexMap[row.INDEX_NAME]) {
+          const idxType = (row.INDEX_TYPE || '').toUpperCase();
           indexMap[row.INDEX_NAME] = {
             type: row.INDEX_TYPE,
-            isUnique: row.IS_UNIQUE === 'TRUE',
+            isUnique: row.IS_UNIQUE === 'TRUE' || idxType.includes('UNIQUE'),
             columns: []
           };
         }
