@@ -110,10 +110,9 @@ class QueryExecutor {
   static async getTableIndexes(schemaName, tableName) {
     const query = `
       SELECT 
-        INDEX_NAME,
-        INDEX_TYPE,
-        IS_UNIQUE,
-        COLUMN_NAME
+        i.INDEX_NAME,
+        i.INDEX_TYPE,
+        ic.COLUMN_NAME
       FROM 
         SYS.INDEX_COLUMNS ic
       JOIN 
@@ -136,10 +135,9 @@ class QueryExecutor {
       SELECT 
         i.INDEX_NAME,
         i.INDEX_TYPE,
-        i.IS_UNIQUE,
         ic.COLUMN_NAME,
         ic.POSITION,
-        ic.ORDER
+        ic."ORDER" AS SORT_ORDER
       FROM 
         SYS.INDEXES i
       JOIN 

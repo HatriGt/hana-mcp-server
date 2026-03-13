@@ -1,21 +1,32 @@
+const path = require('path');
 const { spawn } = require('child_process');
 
 console.log('🔍 HANA MCP Server Inspector');
 console.log('============================\n');
 
-// Spawn the MCP server process
-const server = spawn('/opt/homebrew/opt/node@20/bin/node', ['../../hana-mcp-server.js'], {
+const serverScript = path.join(__dirname, '..', '..', 'hana-mcp-server.js');
+const serverEnv = {
+  ...process.env,
+  HANA_HOST: process.env.HANA_HOST || "your-hana-host.com",
+  HANA_PORT: process.env.HANA_PORT || "443",
+  HANA_USER: process.env.HANA_USER || "your-username",
+  HANA_PASSWORD: process.env.HANA_PASSWORD || "your-password",
+  HANA_SCHEMA: process.env.HANA_SCHEMA || "your-schema",
+  HANA_SSL: process.env.HANA_SSL ?? "true",
+  HANA_ENCRYPT: process.env.HANA_ENCRYPT ?? "true",
+  HANA_VALIDATE_CERT: process.env.HANA_VALIDATE_CERT ?? "true",
+  HANA_CONNECTION_TYPE: process.env.HANA_CONNECTION_TYPE || "auto",
+  HANA_INSTANCE_NUMBER: process.env.HANA_INSTANCE_NUMBER || "",
+  HANA_DATABASE_NAME: process.env.HANA_DATABASE_NAME || "",
+  LOG_LEVEL: process.env.LOG_LEVEL || "info",
+  ENABLE_FILE_LOGGING: process.env.ENABLE_FILE_LOGGING ?? "true",
+  ENABLE_CONSOLE_LOGGING: process.env.ENABLE_CONSOLE_LOGGING ?? "false"
+};
+
+const server = spawn(process.execPath, [serverScript], {
   stdio: ['pipe', 'pipe', 'pipe'],
-  env: {
-    HANA_HOST: "your-hana-host.com",
-    HANA_PORT: "443",
-    HANA_USER: "your-username",
-    HANA_PASSWORD: "your-password",
-    HANA_SCHEMA: "your-schema",
-    HANA_SSL: "true",
-    HANA_ENCRYPT: "true",
-    HANA_VALIDATE_CERT: "true"
-  }
+  cwd: path.join(__dirname, '..', '..'),
+  env: serverEnv
 });
 
 // Handle server output

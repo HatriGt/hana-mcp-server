@@ -1,9 +1,10 @@
 {
   "mcpServers": {
     "HANA Database": {
-      "command": "/opt/homebrew/bin/node",
+      "command": "npx",
       "args": [
-        "/Users/Common/ProjectsRepo/tools/hana-mcp-server/hana-mcp-server.js"
+        "-y",
+        "hana-mcp-server"
       ],
       "env": {
         "HANA_HOST": "your-hana-host.com",

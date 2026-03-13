@@ -4,8 +4,8 @@
 
 // MCP Protocol versions
 const PROTOCOL_VERSIONS = {
-  LATEST: '2024-11-05',
-  SUPPORTED: ['2024-11-05', '2025-03-26']
+  LATEST: '2025-11-25',
+  SUPPORTED: ['2025-11-25', '2025-03-26', '2024-11-05']
 };
 
 // MCP Methods
@@ -23,7 +23,12 @@ const METHODS = {
   
   // Resources
   RESOURCES_LIST: 'resources/list',
-  RESOURCES_READ: 'resources/read'
+  RESOURCES_READ: 'resources/read',
+  RESOURCES_TEMPLATES_LIST: 'resources/templates/list',
+  TASKS_GET: 'tasks/get',
+  TASKS_RESULT: 'tasks/result',
+  TASKS_LIST: 'tasks/list',
+  TASKS_CANCEL: 'tasks/cancel'
 };
 
 // JSON-RPC Error Codes
@@ -59,16 +64,33 @@ const ERROR_MESSAGES = {
 
 // Server Information
 const SERVER_INFO = {
-  name: 'HANA MCP Server',
+  name: 'hana-mcp-server',
+  title: 'HANA MCP Server',
   version: '1.0.0',
-  description: 'Model Context Protocol server for SAP HANA databases'
+  description: 'Model Context Protocol server for SAP HANA databases',
+  websiteUrl: 'https://github.com/hatrigt/hana-mcp-server'
 };
 
 // Capabilities
 const CAPABILITIES = {
-  tools: {},
-  resources: {},
-  prompts: {}
+  logging: {},
+  tools: {
+    listChanged: false
+  },
+  resources: {
+    subscribe: false,
+    listChanged: false
+  },
+  prompts: {
+    listChanged: false
+  },
+  tasks: {
+    list: {},
+    cancel: {},
+    requests: {
+      tools: { call: {} }
+    }
+  }
 };
 
 module.exports = {

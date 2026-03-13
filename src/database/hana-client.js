@@ -98,6 +98,7 @@ function buildLegacyConnectionParams(config) {
     pwd: config.password,
     encrypt: config.encrypt !== false,
     sslValidateCertificate: config.validateCert !== false,
+    ...(config.databaseName ? { databaseName: config.databaseName } : {}),
     ...config.additionalParams
   };
 }

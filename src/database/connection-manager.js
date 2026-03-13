@@ -13,6 +13,7 @@ class ConnectionManager {
     this.lastConnectionAttempt = null;
     this.connectionRetries = 0;
     this.maxRetries = 3;
+    this.lastConnectionError = null;
   }
 
   /**
@@ -61,11 +62,13 @@ class ConnectionManager {
       this.client = await createHanaClient(config);
       
       this.connectionRetries = 0;
+      this.lastConnectionError = null;
       logger.info(`HANA client connected successfully to ${dbType} database`);
       
       return this.client;
     } catch (error) {
       this.connectionRetries++;
+      this.lastConnectionError = error;
       logger.error(`Failed to connect to HANA (attempt ${this.connectionRetries}):`, error.message);
       
       if (this.connectionRetries < this.maxRetries) {
@@ -87,7 +90,8 @@ class ConnectionManager {
   async testConnection() {
     const client = await this.getClient();
     if (!client) {
-      return { success: false, error: 'No client available' };
+      const detail = this.lastConnectionError ? this.lastConnectionError.message : 'No client available';
+      return { success: false, error: detail };
     }
 
     try {

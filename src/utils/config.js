@@ -79,7 +79,6 @@ class Config {
     switch (dbType) {
       case 'mdc_tenant':
         baseParams.serverNode = `${hana.host}:${hana.port}`;
-        baseParams.databaseName = hana.databaseName;
         break;
       case 'mdc_system':
         baseParams.serverNode = `${hana.host}:${hana.port}`;
@@ -88,6 +87,10 @@ class Config {
       default:
         baseParams.serverNode = `${hana.host}:${hana.port}`;
         break;
+    }
+
+    if (hana.databaseName) {
+      baseParams.databaseName = hana.databaseName;
     }
     
     return baseParams;

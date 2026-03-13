@@ -6,16 +6,43 @@ const { logger } = require('./logger');
 
 class Formatters {
   /**
-   * Create a standard MCP tool response
+   * Create a standard MCP CallToolResult-style response
    */
-  static createResponse(text, type = 'text') {
-    return {
+  static createResponse(text, type = 'text', structuredContent = undefined, isError = false) {
+    const result = {
       content: [
         {
           type,
           text
         }
       ]
+    };
+
+    if (structuredContent !== undefined) {
+      result.structuredContent = structuredContent;
+    }
+
+    if (isError) {
+      result.isError = true;
+    }
+
+    return result;
+  }
+
+  /**
+   * Helper to create a purely structured response with a JSON preview in text
+   */
+  static createStructuredResponse(structured, previewTitle = 'Result', isError = false) {
+    const preview = `${previewTitle}:\n\n${JSON.stringify(structured, null, 2)}`;
+    return {
+      content: [
+        {
+          type: 'text',
+          text: preview
+        }
+      ],
+      structuredContent: structured,
+      ...(isError ? { isError: true } : {})
     };
   }
 
@@ -24,7 +51,7 @@ class Formatters {
    */
   static createErrorResponse(message, details = '') {
     const text = details ? `${message}\n\n${details}` : message;
-    return this.createResponse(`❌ ${text}`);
+    return this.createResponse(`❌ ${text}`, 'text', undefined, true);
   }
 
   /**
@@ -192,7 +219,7 @@ class Formatters {
     }
 
     const indexInfo = results[0];
-    const columns = results.map(row => `${row.COLUMN_NAME} (${row.ORDER || 'ASC'})`).join(', ');
+    const columns = results.map(row => `${row.COLUMN_NAME} (${row.SORT_ORDER || row.ORDER || 'ASC'})`).join(', ');
 
     const lines = [
       `📋 Index details for '${schemaName}.${tableName}.${indexName}':`,
@@ -200,7 +227,7 @@ class Formatters {
       `Index Name: ${indexInfo.INDEX_NAME}`,
       `Table: ${schemaName}.${tableName}`,
       `Type: ${indexInfo.INDEX_TYPE}`,
-      `Unique: ${indexInfo.IS_UNIQUE === 'TRUE' ? 'Yes' : 'No'}`,
+      `Unique: ${(indexInfo.IS_UNIQUE === 'TRUE' || (indexInfo.INDEX_TYPE || '').toUpperCase().includes('UNIQUE')) ? 'Yes' : 'No'}`,
       `Columns: ${columns}`,
       `Total columns: ${results.length}`
     ];

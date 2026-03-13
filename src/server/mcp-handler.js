@@ -5,6 +5,8 @@
 const { logger } = require('../utils/logger');
 const { METHODS, ERROR_CODES, ERROR_MESSAGES, PROTOCOL_VERSIONS, SERVER_INFO, CAPABILITIES } = require('../constants/mcp-constants');
 const ToolRegistry = require('../tools');
+const { listResources, readResource, listResourceTemplates } = require('./resources');
+const taskStore = require('./task-store');
 
 class MCPHandler {
   /**
@@ -32,6 +34,27 @@ class MCPHandler {
         case METHODS.PROMPTS_LIST:
           return this.handlePromptsList(id, params);
           
+        case METHODS.RESOURCES_LIST:
+          return this.handleResourcesList(id, params);
+          
+        case METHODS.RESOURCES_READ:
+          return this.handleResourcesRead(id, params);
+          
+        case METHODS.RESOURCES_TEMPLATES_LIST:
+          return this.handleResourcesTemplatesList(id, params);
+          
+        case METHODS.TASKS_GET:
+          return this.handleTasksGet(id, params);
+          
+        case METHODS.TASKS_RESULT:
+          return this.handleTasksResult(id, params);
+          
+        case METHODS.TASKS_LIST:
+          return this.handleTasksList(id, params);
+          
+        case METHODS.TASKS_CANCEL:
+          return this.handleTasksCancel(id, params);
+          
         default:
           return this.createErrorResponse(id, ERROR_CODES.METHOD_NOT_FOUND, `Method not found: ${method}`);
       }
@@ -46,14 +69,30 @@ class MCPHandler {
    */
   static handleInitialize(id, params) {
     logger.info('Initializing server');
+
+    const requestedVersion = params && params.protocolVersion;
+    let negotiatedVersion = PROTOCOL_VERSIONS.LATEST;
+
+    if (requestedVersion && PROTOCOL_VERSIONS.SUPPORTED.includes(requestedVersion)) {
+      negotiatedVersion = requestedVersion;
+    } else if (requestedVersion && !PROTOCOL_VERSIONS.SUPPORTED.includes(requestedVersion)) {
+      negotiatedVersion = PROTOCOL_VERSIONS.LATEST;
+    }
+
+    const instructions = [
+      'HANA MCP Server is connected to a SAP HANA database and exposes tools for configuration, schema exploration, and SQL execution.',
+      'Before using the tools, ensure HANA_HOST, HANA_USER, HANA_PASSWORD and (for MDC tenants) HANA_DATABASE_NAME are configured in the server environment.',
+      'Use hana_show_config, hana_test_connection, and hana_show_env_vars to inspect configuration and connectivity before running queries.'
+    ].join(' ');
     
     return {
       jsonrpc: '2.0',
       id,
       result: {
-        protocolVersion: PROTOCOL_VERSIONS.LATEST,
+        protocolVersion: negotiatedVersion,
         capabilities: CAPABILITIES,
-        serverInfo: SERVER_INFO
+        serverInfo: SERVER_INFO,
+        instructions
       }
     };
   }
@@ -63,13 +102,15 @@ class MCPHandler {
    */
   static handleToolsList(id, params) {
     logger.info('Listing tools');
-    
-    const tools = ToolRegistry.getTools();
-    
+    const cursor = params && params.cursor;
+    const pageSize = 50;
+    const { tools, nextCursor } = ToolRegistry.getToolsPaginated(cursor, pageSize);
+    const result = { tools };
+    if (nextCursor) result.nextCursor = nextCursor;
     return {
       jsonrpc: '2.0',
       id,
-      result: { tools }
+      result
     };
   }
 
@@ -77,29 +118,41 @@ class MCPHandler {
    * Handle tools/call request
    */
   static async handleToolsCall(id, params) {
-    const { name, arguments: args } = params;
+    const { name, arguments: args, task: taskMeta } = params || {};
     
     logger.tool(name, args);
     
-    // Validate tool exists
     if (!ToolRegistry.hasTool(name)) {
       return this.createErrorResponse(id, ERROR_CODES.TOOL_NOT_FOUND, `Tool not found: ${name}`);
     }
     
-    // Validate tool arguments
-    const validation = ToolRegistry.validateToolArgs(name, args);
+    const validation = ToolRegistry.validateToolArgs(name, args || {});
     if (!validation.valid) {
       return this.createErrorResponse(id, ERROR_CODES.INVALID_PARAMS, validation.error);
     }
-    
-    try {
-      const result = await ToolRegistry.executeTool(name, args);
-      
+
+    const isTaskAugmented = taskMeta && typeof taskMeta === 'object';
+    if (isTaskAugmented) {
+      const task = taskStore.createTask(taskMeta);
+      (async () => {
+        try {
+          const result = await ToolRegistry.executeTool(name, args || {});
+          taskStore.completeTask(task.taskId, result);
+        } catch (error) {
+          logger.error(`Tool execution failed: ${error.message}`);
+          taskStore.failTask(task.taskId, error.message);
+        }
+      })();
       return {
         jsonrpc: '2.0',
         id,
-        result
+        result: { task }
       };
+    }
+    
+    try {
+      const result = await ToolRegistry.executeTool(name, args || {});
+      return { jsonrpc: '2.0', id, result };
     } catch (error) {
       logger.error(`Tool execution failed: ${error.message}`);
       return this.createErrorResponse(id, ERROR_CODES.INTERNAL_ERROR, error.message);
@@ -119,30 +172,162 @@ class MCPHandler {
    */
   static handlePromptsList(id, params) {
     logger.info('Listing prompts');
-    
-    const prompts = [
+    const cursor = params && params.cursor;
+    const allPrompts = [
       {
-        name: "hana_query_builder",
-        description: "Build a SQL query for HANA database",
-        template: "I need to build a SQL query for HANA database that {{goal}}."
+        name: 'hana_query_builder',
+        description: 'Build a SQL query for HANA database',
+        arguments: [{ name: 'goal', description: 'What the query should achieve', required: true }]
       },
       {
-        name: "hana_schema_explorer",
-        description: "Explore HANA database schemas and tables",
-        template: "I want to explore the schemas and tables in my HANA database."
+        name: 'hana_schema_explorer',
+        description: 'Explore HANA database schemas and tables',
+        arguments: []
       },
       {
-        name: "hana_connection_test",
-        description: "Test HANA database connection",
-        template: "Please test my HANA database connection and show the configuration."
+        name: 'hana_connection_test',
+        description: 'Test HANA database connection and show configuration',
+        arguments: []
       }
     ];
-    
+    const pageSize = 50;
+    let start = 0;
+    if (cursor) {
+      try {
+        const decoded = Buffer.from(cursor, 'base64').toString('utf8');
+        const parsed = JSON.parse(decoded);
+        if (typeof parsed.offset === 'number' && parsed.offset >= 0) {
+          start = Math.min(parsed.offset, allPrompts.length);
+        }
+      } catch (_) {
+        start = 0;
+      }
+    }
+    const prompts = allPrompts.slice(start, start + pageSize);
+    const hasMore = start + prompts.length < allPrompts.length;
+    const result = { prompts };
+    if (hasMore) {
+      result.nextCursor = Buffer.from(JSON.stringify({ offset: start + prompts.length }), 'utf8').toString('base64');
+    }
     return {
       jsonrpc: '2.0',
       id,
-      result: { prompts }
+      result
     };
+  }
+
+  /**
+   * Handle resources/list request
+   */
+  static async handleResourcesList(id, params) {
+    logger.info('Listing resources');
+    const cursor = params && params.cursor;
+    try {
+      const { resources, nextCursor } = await listResources(cursor);
+      const result = { resources };
+      if (nextCursor) result.nextCursor = nextCursor;
+      return { jsonrpc: '2.0', id, result };
+    } catch (err) {
+      logger.error('resources/list failed:', err.message);
+      return this.createErrorResponse(id, ERROR_CODES.INTERNAL_ERROR, err.message);
+    }
+  }
+
+  /**
+   * Handle resources/read request
+   */
+  static async handleResourcesRead(id, params) {
+    const uri = params && params.uri;
+    if (!uri) {
+      return this.createErrorResponse(id, ERROR_CODES.INVALID_PARAMS, 'Missing params.uri');
+    }
+    logger.info(`Reading resource: ${uri}`);
+    try {
+      const result = await readResource(uri);
+      return { jsonrpc: '2.0', id, result };
+    } catch (err) {
+      const code = err.code || ERROR_CODES.INTERNAL_ERROR;
+      const message = err.message || 'Resource read failed';
+      return this.createErrorResponse(id, code, message);
+    }
+  }
+
+  /**
+   * Handle resources/templates/list request
+   */
+  static handleResourcesTemplatesList(id, params) {
+    logger.info('Listing resource templates');
+    const result = listResourceTemplates();
+    return { jsonrpc: '2.0', id, result };
+  }
+
+  /**
+   * Handle tasks/get request
+   */
+  static handleTasksGet(id, params) {
+    const taskId = params && params.taskId;
+    if (!taskId) {
+      return this.createErrorResponse(id, ERROR_CODES.INVALID_PARAMS, 'Missing params.taskId');
+    }
+    const task = taskStore.getTask(taskId);
+    if (!task) {
+      return this.createErrorResponse(id, ERROR_CODES.INVALID_PARAMS, 'Task not found or expired');
+    }
+    return { jsonrpc: '2.0', id, result: task };
+  }
+
+  /**
+   * Handle tasks/result request
+   */
+  static handleTasksResult(id, params) {
+    const taskId = params && params.taskId;
+    if (!taskId) {
+      return this.createErrorResponse(id, ERROR_CODES.INVALID_PARAMS, 'Missing params.taskId');
+    }
+    const task = taskStore.getTask(taskId);
+    if (!task) {
+      return this.createErrorResponse(id, ERROR_CODES.INVALID_PARAMS, 'Task not found or expired');
+    }
+    const payload = taskStore.getTaskResult(taskId);
+    if (payload && payload.pending) {
+      return this.createErrorResponse(id, ERROR_CODES.INVALID_PARAMS, 'Task not yet completed');
+    }
+    return { jsonrpc: '2.0', id, result: payload };
+  }
+
+  /**
+   * Handle tasks/list request
+   */
+  static handleTasksList(id, params) {
+    const cursor = params && params.cursor;
+    const { tasks: taskList, nextCursor } = taskStore.listTasks(cursor);
+    const result = { tasks: taskList };
+    if (nextCursor) result.nextCursor = nextCursor;
+    return { jsonrpc: '2.0', id, result };
+  }
+
+  /**
+   * Handle tasks/cancel request
+   */
+  static handleTasksCancel(id, params) {
+    const taskId = params && params.taskId;
+    if (!taskId) {
+      return this.createErrorResponse(id, ERROR_CODES.INVALID_PARAMS, 'Missing params.taskId');
+    }
+    const task = taskStore.cancelTask(taskId);
+    if (!task) {
+      return this.createErrorResponse(id, ERROR_CODES.INVALID_PARAMS, 'Task not found or already in terminal status');
+    }
+    const result = {
+      taskId: task.taskId,
+      status: task.status,
+      statusMessage: task.statusMessage,
+      createdAt: task.createdAt,
+      lastUpdatedAt: task.lastUpdatedAt,
+      ttl: task.ttl,
+      pollInterval: task.pollInterval
+    };
+    return { jsonrpc: '2.0', id, result };
   }
 
   /**
