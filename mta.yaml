@@ -1,0 +1,36 @@
+_schema-version: "3.1"
+ID: hana-mcp-server
+version: 0.2.0
+
+parameters:
+  enable-parallel-deployments: true
+
+modules:
+  - name: hana-mcp-server
+    type: nodejs
+    path: .
+    parameters:
+      memory: 512M
+      disk-quota: 1G
+      buildpack: nodejs_buildpack
+      health-check-type: http
+      health-check-http-endpoint: /health
+      command: node src/server/http-index.js
+    build-parameters:
+      builder: npm
+      ignore:
+        - .git/
+        - tests/
+        - "*.md"
+    requires:
+      - name: hana-mcp-server-xsuaa
+    properties:
+      MCP_HTTP_AUTH_ENABLED: "true"
+
+resources:
+  - name: hana-mcp-server-xsuaa
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: xsuaa
+      service-plan: application
+      path: xs-security.json

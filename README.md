@@ -1,4 +1,4 @@
-# HANA MCP Server
+# SAP HANA MCP Server
 
 [![npm version](https://img.shields.io/npm/v/hana-mcp-server.svg)](https://www.npmjs.com/package/hana-mcp-server)
 [![npm downloads](https://img.shields.io/npm/dy/hana-mcp-server.svg)](https://www.npmjs.com/package/hana-mcp-server)
@@ -6,7 +6,7 @@
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![MCP](https://badge.mcpx.dev?type=server)](https://modelcontextprotocol.io/)
 
-> **Model Context Protocol (MCP) server for SAP HANA: connect AI assistants and development tools to your database.**
+> **Model Context Protocol (MCP) server for SAP HANA and HANA Cloud: connect Claude Code, VS Code, and other AI agents to your database.**
 
 ## 🎯 Use cases
 
@@ -106,9 +106,23 @@ For HTTP (remote or multi-client), start the server:
 npm run start:http
 ```
 
-Default: `http://127.0.0.1:3100/mcp`. Override with `MCP_HTTP_PORT` and optionally `MCP_HTTP_HOST`. Send JSON-RPC via POST to `/mcp`; include `MCP-Protocol-Version: 2025-11-25` (or a supported version) if your client supports it.
+Default: `http://127.0.0.1:3100/mcp`. Override with `MCP_HTTP_PORT` and optionally `MCP_HTTP_HOST`. Send JSON-RPC via POST to `/mcp`; include `MCP-Protocol-Version: 2025-11-25` (or a supported version) if your client supports it. `GET /health` returns `200` for health checks (e.g. BTP).
 
-For production: run behind a reverse proxy with authentication and bind to localhost unless you need remote access.
+**Optional HTTP authentication (OAuth2/OIDC)**  
+To require a Bearer JWT on every POST to `/mcp`, set:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `MCP_HTTP_AUTH_ENABLED` | — | `true` to enable |
+| `MCP_HTTP_JWT_ISSUER` | Yes (or bind XSUAA on BTP) | IdP issuer URL (e.g. SAP IAS, Auth0, Okta). On BTP with bound XSUAA, omit and the server uses the bound instance. |
+| `MCP_HTTP_JWT_AUDIENCE` | No | Expected `aud` in the token |
+| `MCP_HTTP_JWT_SCOPES_REQUIRED` | No | Comma-separated scopes (e.g. `read,write`) |
+
+The server validates the JWT using the issuer's JWKS (from `/.well-known/openid-configuration`). Clients send `Authorization: Bearer <access_token>`. Invalid or missing token returns `401` with `WWW-Authenticate: Bearer`.
+
+**BTP:** Deploy with an XSUAA resource bound to the app and `xs-security.json` defining scopes/role-templates. Set `MCP_HTTP_AUTH_ENABLED=true`; you do not need to set `MCP_HTTP_JWT_ISSUER` (the server uses the bound XSUAA URL). Assign role collections to users in the BTP cockpit.
+
+For production: run behind a reverse proxy and/or enable the auth above; bind to localhost unless you need remote access.
 
 ---
 
@@ -268,7 +282,7 @@ hana-mcp-server/
 ## 📦 Package info
 
 - **Size**: 21.7 kB
-- **Dependencies**: @sap/hana-client, axios
+- **Dependencies**: @sap/hana-client, axios, jose
 - **Node.js**: 18+
 - **Platforms**: macOS, Linux, Windows
 

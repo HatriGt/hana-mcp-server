@@ -1,0 +1,14 @@
+{
+  "xsappname": "hana-mcp-server",
+  "tenant-mode": "dedicated",
+  "scopes": [
+    { "name": "$XSAPPNAME.read", "description": "Use HANA MCP tools (read)" },
+    { "name": "$XSAPPNAME.write", "description": "Use HANA MCP tools (write)" },
+    { "name": "$XSAPPNAME.admin", "description": "Admin HANA MCP server" }
+  ],
+  "role-templates": [
+    { "name": "HanaMcpViewer", "description": "View/query via HANA MCP", "scope-references": ["$XSAPPNAME.read"] },
+    { "name": "HanaMcpEditor", "description": "Read and write via HANA MCP", "scope-references": ["$XSAPPNAME.read", "$XSAPPNAME.write"] },
+    { "name": "HanaMcpAdmin", "description": "Full access", "scope-references": ["$XSAPPNAME.read", "$XSAPPNAME.write", "$XSAPPNAME.admin"] }
+  ]
+}

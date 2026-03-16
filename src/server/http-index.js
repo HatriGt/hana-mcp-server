@@ -9,6 +9,7 @@ const http = require('http');
 const { logger } = require('../utils/logger');
 const MCPHandler = require('./mcp-handler');
 const { ERROR_CODES } = require('../constants/mcp-constants');
+const { validateBearer } = require('./http-auth');
 
 const PORT = parseInt(process.env.MCP_HTTP_PORT, 10) || 3100;
 const HOST = process.env.MCP_HTTP_HOST || '127.0.0.1';
@@ -42,7 +43,14 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  if (req.url !== MCP_PATH && !req.url.startsWith(`${MCP_PATH}?`)) {
+  const path = (req.url || '').split('?')[0];
+  if (path === '/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok', server: 'hana-mcp-server' }));
+    return;
+  }
+
+  if (path !== MCP_PATH && !req.url.startsWith(`${MCP_PATH}?`)) {
     res.writeHead(404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Not Found', path: MCP_PATH }));
     return;
@@ -63,6 +71,19 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(405, { Allow: 'GET, POST' });
     res.end();
     return;
+  }
+
+  if (process.env.MCP_HTTP_AUTH_ENABLED === 'true') {
+    try {
+      await validateBearer(req);
+    } catch (err) {
+      const status = err.statusCode || 401;
+      const headers = { 'Content-Type': 'application/json' };
+      if (err.wwwAuth) headers['WWW-Authenticate'] = err.wwwAuth;
+      res.writeHead(status, headers);
+      res.end(JSON.stringify({ jsonrpc: '2.0', error: { code: -32600, message: err.message } }));
+      return;
+    }
   }
 
   const protocolVersion = req.headers['mcp-protocol-version'] || '2025-11-25';
