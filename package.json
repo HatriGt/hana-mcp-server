@@ -1,6 +1,6 @@
 {
   "name": "hana-mcp-server",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "SAP HANA MCP server — Model Context Protocol server for SAP HANA and HANA Cloud. Use with Claude Code, VS Code, and other AI agents.",
   "main": "hana-mcp-server.js",
   "bin": {
@@ -10,7 +10,8 @@
     "start": "node hana-mcp-server.js",
     "start:http": "node src/server/http-index.js",
     "dev": "nodemon hana-mcp-server.js",
-    "test": "node tests/automated/test-mcp-inspector.js && node tests/automated/test-new-features.js",
+    "test": "node tests/automated/test-config-limits.js && node tests/automated/test-config-all-env.js && node tests/automated/test-resources-uri.js && node tests/automated/test-formatters-query.js && node tests/automated/test-sensitive-redact.js && node tests/automated/test-metadata-catalog.js && node tests/automated/test-snapshot-store.js && node tests/automated/test-semantics-loader.js && node tests/automated/test-semantics-url-env.js && node tests/automated/test-query-runner-mocked.js && node tests/automated/test-schema-table-tools-mocked.js && node tests/automated/test-query-tools-mocked.js && node tests/automated/test-query-runner-unit.js && node tests/automated/test-http-origin-env.js && node tests/automated/test-http-auth-env.js && node tests/automated/test-mcp-inspector.js && node tests/automated/test-new-features.js",
+    "test:live": "node tests/automated/test-all-tools.js",
     "test:new": "node tests/automated/test-new-features.js",
     "test:all-tools": "node tests/automated/test-all-tools.js",
     "test:query-once": "node tests/automated/run-query-once.js"

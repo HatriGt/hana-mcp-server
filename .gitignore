@@ -10,6 +10,9 @@ yarn-error.log
 .env.production
 .env.staging
 
+# Local / sample semantics (do not commit tenant-specific metadata)
+config/finance-fi-ca-semantics.json
+
 # Security - Credential files
 *config*.json
 *credential*.json

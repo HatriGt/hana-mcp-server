@@ -3,6 +3,7 @@
  */
 
 const { logger } = require('../utils/logger');
+const { redactSecrets } = require('../utils/sensitive-redact');
 const { connectionManager } = require('../database/connection-manager');
 
 class LifecycleManager {
@@ -32,7 +33,7 @@ class LifecycleManager {
       this.isInitialized = true;
       logger.info('HANA MCP Server initialized successfully');
     } catch (error) {
-      logger.error('Failed to initialize server:', error.message);
+      logger.error('Failed to initialize server:', redactSecrets(error.message));
       throw error;
     }
   }
@@ -51,7 +52,7 @@ class LifecycleManager {
       
       logger.info('HANA MCP Server started successfully');
     } catch (error) {
-      logger.error('Failed to start server:', error.message);
+      logger.error('Failed to start server:', redactSecrets(error.message));
       throw error;
     }
   }
@@ -74,7 +75,7 @@ class LifecycleManager {
       
       logger.info('HANA MCP Server shutdown completed');
     } catch (error) {
-      logger.error('Error during shutdown:', error.message);
+      logger.error('Error during shutdown:', redactSecrets(error.message));
     } finally {
       process.exit(0);
     }
@@ -111,13 +112,15 @@ class LifecycleManager {
 
     // Handle uncaught exceptions
     process.on('uncaughtException', (error) => {
-      logger.error('Uncaught exception:', error.message);
+      logger.error('Uncaught exception:', redactSecrets(error.message));
       this.shutdown();
     });
 
     // Handle unhandled promise rejections
     process.on('unhandledRejection', (reason, promise) => {
-      logger.error('Unhandled promise rejection:', reason);
+      const msg =
+        reason instanceof Error ? reason.message : String(reason);
+      logger.error('Unhandled promise rejection:', redactSecrets(msg));
       this.shutdown();
     });
   }

@@ -6,6 +6,7 @@
 
 const readline = require('readline');
 const { logger } = require('../utils/logger');
+const { redactSecrets } = require('../utils/sensitive-redact');
 const { lifecycleManager } = require('./lifecycle-manager');
 const MCPHandler = require('./mcp-handler');
 const { ERROR_CODES } = require('../constants/mcp-constants');
@@ -30,7 +31,7 @@ class MCPServer {
 
       logger.info('Server ready for requests');
     } catch (error) {
-      logger.error('Failed to start server:', error.message);
+      logger.error('Failed to start server:', redactSecrets(error.message));
       process.exit(1);
     }
   }
@@ -75,7 +76,7 @@ class MCPServer {
         console.log(JSON.stringify(response));
       }
     } catch (error) {
-      logger.error(`Parse error: ${error.message}`);
+      logger.error(`Parse error: ${redactSecrets(error.message)}`);
       const errorResponse = {
         jsonrpc: '2.0',
         id: null,
@@ -139,6 +140,6 @@ process.on('SIGTERM', async () => {
 
 // Start the server
 server.start().catch(error => {
-  logger.error('Failed to start server:', error.message);
+  logger.error('Failed to start server:', redactSecrets(error.message));
   process.exit(1);
 }); 

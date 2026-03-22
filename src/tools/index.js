@@ -3,6 +3,7 @@
  */
 
 const { logger } = require('../utils/logger');
+const { redactSecrets } = require('../utils/sensitive-redact');
 const { TOOLS } = require('../constants/tool-definitions');
 const ConfigTools = require('./config-tools');
 const SchemaTools = require('./schema-tools');
@@ -18,9 +19,11 @@ const TOOL_IMPLEMENTATIONS = {
   hana_list_schemas: SchemaTools.listSchemas,
   hana_list_tables: TableTools.listTables,
   hana_describe_table: TableTools.describeTable,
+  hana_explain_table: TableTools.explainTable,
   hana_list_indexes: IndexTools.listIndexes,
   hana_describe_index: IndexTools.describeIndex,
-  hana_execute_query: QueryTools.executeQuery
+  hana_execute_query: QueryTools.executeQuery,
+  hana_query_next_page: QueryTools.queryNextPage
 };
 
 class ToolRegistry {
@@ -64,7 +67,7 @@ class ToolRegistry {
       logger.debug(`Tool ${name} executed successfully`);
       return result;
     } catch (error) {
-      logger.error(`Tool ${name} execution failed:`, error.message);
+      logger.error(`Tool ${name} execution failed:`, redactSecrets(error.message));
       throw error;
     }
   }
