@@ -6,34 +6,69 @@
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![MCP](https://badge.mcpx.dev?type=server)](https://modelcontextprotocol.io/)
 
-> **Model Context Protocol (MCP) server for SAP HANA and HANA Cloud: connect Claude Code, VS Code, and other AI agents to your database.**
+**SAP HANA MCP Server** implements the [Model Context Protocol](https://modelcontextprotocol.io/) for **SAP HANA** and **SAP HANA Cloud**. AI clients discover schema, run SQL with guardrails, and optionally merge **business/domain metadata** so agents interpret codes and tables consistently—without replacing your database as the system of record.
+
+---
+
+## 📚 Documentation
+
+| Document | Purpose |
+|----------|---------|
+| This README | Prerequisites, install, **how to wire each client**, capability summary, configuration cheat sheet, troubleshooting |
+| [CHANGELOG.md](CHANGELOG.md) | **Release history** — features and fixes by version (`0.2.x`, latest `0.2.2`) |
+| [docs/README.md](docs/README.md) | Index of `/docs` |
+| [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md) | **Authoritative** env reference: every variable, defaults, **hard bounds**, HTTP auth, security notes |
+| [docs/configuration-samples.md](docs/configuration-samples.md) | **Copy-paste**: connection profiles (single-container, MDC), semantics JSON, paging pointers |
+| [docs/local-http-mcp.md](docs/local-http-mcp.md) | Local **HTTP** MCP: `npm run start:http`, Cursor `mcp.json`, curl smoke checks |
+
+---
+
+## ✅ Prerequisites
+
+- **Node.js** 18+
+- A **SAP HANA** or **SAP HANA Cloud** database reachable on the SQL port from the machine running the server
+- An **MCP client** (Claude Desktop, Claude Code, VS Code, Cursor, Cline, Windsurf, or custom HTTP client)
+- **Credentials** supplied via env (see [Security](#security))
+
+---
+
+## 📦 Installation
+
+| Method | Use when |
+|--------|----------|
+| `npx` + `-y hana-mcp-server` in MCP config | **Default** — no global install |
+| `npm install -g hana-mcp-server` | You need `hana-mcp-server` on `PATH` |
+| Clone + `node hana-mcp-server.js` | Developing or pinning a local build |
+
+**HTTP entrypoint** (from a clone): `npm run start:http` — default bind `127.0.0.1:3100`, path `/mcp`. See [Hosted & HTTP](#-hosted--http).
+
+---
 
 ## 🎯 Use cases
 
-| Use case | Transport | Go to |
-|----------|-----------|--------|
-| **Claude Desktop** — Chat over HANA data | stdio | [Claude Desktop](#-claude-desktop) |
-| **IDEs** — Claude Code, VS Code, Cline, Cursor, Windsurf | stdio | [IDEs & code agents](#-ides--code-agents) |
-| **Hosted / apps** — Run server for multiple clients or your app | HTTP | [Hosted & HTTP](#-hosted--http) |
-
-Install from npm (`npm install -g hana-mcp-server`) or use npx in your client config; no global install required for IDEs or HTTP.
+| Audience | Transport | Next step |
+|----------|-----------|-----------|
+| Chat / lite users | stdio | [Claude Desktop](#-claude-desktop) |
+| Developers (Claude Code, VS Code, Cline, Cursor, Windsurf) | stdio | [IDEs & code agents](#-ides--code-agents) |
+| Business apps with AI agents (you host MCP over HTTP) | HTTP | [Hosted & HTTP](#-hosted--http) |
 
 ---
 
 ## 🖥️ Claude Desktop
 
-1. Edit your Claude Desktop config file:
-   - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-   - **Windows**: `%APPDATA%\claude\claude_desktop_config.json`
-   - **Linux**: `~/.config/claude/claude_desktop_config.json`
+1. Config file path:
+   - **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+   - **Windows:** `%APPDATA%\claude\claude_desktop_config.json`
+   - **Linux:** `~/.config/claude/claude_desktop_config.json`
 
-2. Add the MCP server (use the same [configuration](#configuration) env vars as needed):
+2. Register the server; put connection settings in `env` (see [Configuration](#configuration); full profile JSON in [configuration-samples.md](docs/configuration-samples.md)). The example below includes **`HANA_INSTANCE_NUMBER`** / **`HANA_DATABASE_NAME`** for **MDC**—remove them if you use a single-container database.
 
 ```json
 {
   "mcpServers": {
     "HANA Database": {
-      "command": "hana-mcp-server",
+      "command": "npx",
+      "args": ["-y", "hana-mcp-server"],
       "env": {
         "HANA_HOST": "your-hana-host.com",
         "HANA_PORT": "443",
@@ -55,17 +90,17 @@ Install from npm (`npm install -g hana-mcp-server`) or use npx in your client co
 }
 ```
 
+If the CLI is on `PATH`, you may use `"command": "hana-mcp-server"` and omit `args`.
+
 3. Restart Claude Desktop.
 
-For a UI to manage configs and deploy to Claude Desktop: [HANA MCP UI](https://www.npmjs.com/package/hana-mcp-ui) (`npx hana-mcp-ui`).
+**Optional:** [HANA MCP UI](https://www.npmjs.com/package/hana-mcp-ui) — `npx hana-mcp-ui` for editing envs and deploying to Claude Desktop.
 
 ---
 
 ## 💻 IDEs & code agents
 
-Use stdio; same [configuration](#configuration) env vars as above. One canonical example (Claude Code):
-
-Add to **`~/.claude.json`** (global) or **`.mcp.json`** (project root):
+**stdio** only; same `env` keys as above. **Canonical example — Claude Code** (`~/.claude.json` or project `.mcp.json`). The `env` block below includes **`HANA_DATABASE_NAME`** for **MDC tenant** HANA; omit it for most single-container setups.
 
 ```json
 {
@@ -94,169 +129,142 @@ Add to **`~/.claude.json`** (global) or **`.mcp.json`** (project root):
 }
 ```
 
-Same pattern for VS Code, Cline, Cursor, and Windsurf—add this server to your IDE’s MCP list with the same `command` / `args` / `env`. For MDC tenants set `HANA_DATABASE_NAME` (e.g. `HQQ`). Restart MCP after config changes.
+Use the same `command`, `args`, and `env` in VS Code, Cline, Cursor, and Windsurf. After any change to `env`, restart the MCP server connection in the IDE.
 
 ---
 
 ## 🌐 Hosted & HTTP
 
-For HTTP (remote or multi-client), start the server:
+Run the HTTP transport **from a checkout of this repository** (after `npm install`). The published `npx hana-mcp-server` path is **stdio** only.
 
 ```bash
 npm run start:http
 ```
 
-Default: `http://127.0.0.1:3100/mcp`. Override with `MCP_HTTP_PORT` and optionally `MCP_HTTP_HOST`. Send JSON-RPC via POST to `/mcp`; include `MCP-Protocol-Version: 2025-11-25` (or a supported version) if your client supports it. `GET /health` returns `200` for health checks (e.g. BTP).
+**Cursor / local IDE over HTTP:** set `HANA_*` in the shell (or process manager) that runs `start:http`, then add an HTTP MCP entry with `url` `http://127.0.0.1:3100/mcp` (`"type": "fetch"` or `"type": "http"`, depending on Cursor version). See [docs/local-http-mcp.md](docs/local-http-mcp.md) and `./scripts/start-http-mcp.sh`.
 
-**Optional HTTP authentication (OAuth2/OIDC)**  
-To require a Bearer JWT on every POST to `/mcp`, set:
+| Topic | Detail |
+|--------|--------|
+| Endpoint | `POST` JSON-RPC to `/mcp` (default base `http://127.0.0.1:3100`) |
+| Tuning | `MCP_HTTP_HOST`, `MCP_HTTP_PORT` |
+| Health | `GET /health` → `200` |
+| CORS | `MCP_HTTP_ALLOWED_ORIGINS` — [ENVIRONMENT.md §7](docs/ENVIRONMENT.md#7-http-transport-npm-run-starthttp) |
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `MCP_HTTP_AUTH_ENABLED` | — | `true` to enable |
-| `MCP_HTTP_JWT_ISSUER` | Yes (or bind XSUAA on BTP) | IdP issuer URL (e.g. SAP IAS, Auth0, Okta). On BTP with bound XSUAA, omit and the server uses the bound instance. |
-| `MCP_HTTP_JWT_AUDIENCE` | No | Expected `aud` in the token |
-| `MCP_HTTP_JWT_SCOPES_REQUIRED` | No | Comma-separated scopes (e.g. `read,write`) |
+### Optional Bearer JWT (OAuth2 / OIDC)
 
-The server validates the JWT using the issuer's JWKS (from `/.well-known/openid-configuration`). Clients send `Authorization: Bearer <access_token>`. Invalid or missing token returns `401` with `WWW-Authenticate: Bearer`.
+| Variable | Role |
+|----------|------|
+| `MCP_HTTP_AUTH_ENABLED` | `true` → require `Authorization: Bearer <token>` on `POST /mcp` |
+| `MCP_HTTP_JWT_ISSUER` | Issuer / JWKS (omit on **SAP BTP** with bound XSUAA) |
+| `MCP_HTTP_JWT_AUDIENCE` | Optional expected `aud` |
+| `MCP_HTTP_JWT_SCOPES_REQUIRED` | Optional scope list |
 
-**BTP:** Deploy with an XSUAA resource bound to the app and `xs-security.json` defining scopes/role-templates. Set `MCP_HTTP_AUTH_ENABLED=true`; you do not need to set `MCP_HTTP_JWT_ISSUER` (the server uses the bound XSUAA URL). Assign role collections to users in the BTP cockpit.
-
-For production: run behind a reverse proxy and/or enable the auth above; bind to localhost unless you need remote access.
+**SAP BTP:** bind XSUAA, `MCP_HTTP_AUTH_ENABLED=true`, assign role collections. Details: [ENVIRONMENT.md §7](docs/ENVIRONMENT.md#7-http-transport-npm-run-starthttp).
 
 ---
 
-## 🛠️ Configuration
+## 🔒 Security
 
-Set the same environment variables in your client or server env. Full reference:
+- **Secrets:** `HANA_PASSWORD`, JWT material, and URLs with embedded credentials belong in env or a secret manager — not in git.
+- **Supply chain:** Prefer **`npx -y`** from the published package in CI and shared desktops instead of a mutable global install.
+- **HTTP:** Enable JWT validation for anything beyond localhost; put the service behind a reverse proxy for TLS termination and network policy.
 
-### Required
-
-| Parameter | Description | Example |
-|-----------|-------------|---------|
-| `HANA_HOST` | Database hostname or IP | `hana.company.com` |
-| `HANA_USER` | Database username | `DBADMIN` |
-| `HANA_PASSWORD` | Database password | — |
-
-### Optional
-
-| Parameter | Description | Default | Options |
-|-----------|-------------|---------|---------|
-| `HANA_PORT` | Database port | `443` | Any valid port |
-| `HANA_SCHEMA` | Default schema | — | Schema name |
-| `HANA_CONNECTION_TYPE` | Connection type | `auto` | `auto`, `single_container`, `mdc_system`, `mdc_tenant` |
-| `HANA_INSTANCE_NUMBER` | Instance number (MDC) | — | e.g. `10` |
-| `HANA_DATABASE_NAME` | Database name (MDC tenant) | — | e.g. `HQQ` |
-| `HANA_SSL` | Enable SSL | `true` | `true`, `false` |
-| `HANA_ENCRYPT` | Enable encryption | `true` | `true`, `false` |
-| `HANA_VALIDATE_CERT` | Validate SSL certificates | `true` | `true`, `false` |
-| `LOG_LEVEL` | Logging level | `info` | `error`, `warn`, `info`, `debug` |
-| `ENABLE_FILE_LOGGING` | File logging | `true` | `true`, `false` |
-| `ENABLE_CONSOLE_LOGGING` | Console logging | `false` | `true`, `false` |
-
-### Database connection types
-
-#### 1. Single-container database
-
-Standard HANA database with a single tenant.
-
-**Required**: `HANA_HOST`, `HANA_USER`, `HANA_PASSWORD`  
-**Optional**: `HANA_PORT`, `HANA_SCHEMA`
-
-```json
-{
-  "HANA_HOST": "hana.company.com",
-  "HANA_PORT": "443",
-  "HANA_USER": "DBADMIN",
-  "HANA_PASSWORD": "password",
-  "HANA_SCHEMA": "SYSTEM",
-  "HANA_CONNECTION_TYPE": "single_container"
-}
-```
-
-#### 2. MDC system database
-
-Multi-tenant system database (manages tenants).
-
-**Required**: `HANA_HOST`, `HANA_PORT`, `HANA_INSTANCE_NUMBER`, `HANA_USER`, `HANA_PASSWORD`  
-**Optional**: `HANA_SCHEMA`
-
-```json
-{
-  "HANA_HOST": "192.168.1.100",
-  "HANA_PORT": "31013",
-  "HANA_INSTANCE_NUMBER": "10",
-  "HANA_USER": "SYSTEM",
-  "HANA_PASSWORD": "password",
-  "HANA_SCHEMA": "SYSTEM",
-  "HANA_CONNECTION_TYPE": "mdc_system"
-}
-```
-
-#### 3. MDC tenant database
-
-Multi-tenant tenant database (specific tenant).
-
-**Required**: `HANA_HOST`, `HANA_PORT`, `HANA_INSTANCE_NUMBER`, `HANA_DATABASE_NAME`, `HANA_USER`, `HANA_PASSWORD`  
-**Optional**: `HANA_SCHEMA`
-
-```json
-{
-  "HANA_HOST": "192.168.1.100",
-  "HANA_PORT": "31013",
-  "HANA_INSTANCE_NUMBER": "10",
-  "HANA_DATABASE_NAME": "HQQ",
-  "HANA_USER": "DBADMIN",
-  "HANA_PASSWORD": "password",
-  "HANA_SCHEMA": "SYSTEM",
-  "HANA_CONNECTION_TYPE": "mdc_tenant"
-}
-```
-
-#### Auto-detection
-
-When `HANA_CONNECTION_TYPE` is set to `auto` (default), the server infers the type:
-
-- If `HANA_INSTANCE_NUMBER` + `HANA_DATABASE_NAME` → **MDC tenant**
-- If only `HANA_INSTANCE_NUMBER` → **MDC system**
-- If neither → **Single-container**
+Further notes: [ENVIRONMENT.md §9](docs/ENVIRONMENT.md#9-security-notes).
 
 ---
 
 ## 🎯 Capabilities
 
-- **Schema exploration**: List schemas, tables, table structures.
-- **Query execution**: Run SQL; sample data; system info.
-- **Natural language**: e.g. “Show me all tables in the SYSTEM schema”, “Describe the structure of table CUSTOMERS”, “Get sample data from ORDERS table”.
+| Area | What callers get |
+|------|-------------------|
+| **Schema** | Paged schema/table lists, column metadata, connectivity checks |
+| **SQL** | Parameterized execution; caps on SELECT/WITH rows, columns, and cell size; optional totals and continuation via `hana_query_next_page` where supported |
+| **Resources** | `hana:///` URIs for list/read; large payloads flagged with `truncated` metadata |
+| **Domain knowledge (optional)** | JSON overlay for **`hana_explain_table`** — [configuration-samples.md](docs/configuration-samples.md) |
 
-### MCP features (spec 2025-11-25)
+---
 
-- **Tools**: All tools include `title` and annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`). Query execution supports optional **task** for long-running runs.
-- **Resources**: Schemas and tables under `hana:///`; `resources/list`, `resources/read`, `resources/templates/list`.
-- **Tasks**: Long-running tool calls (e.g. `hana_execute_query`) can use `task: { ttl }`; poll `tasks/get` and `tasks/result`. In-memory; do not persist across restarts.
+## 🛠️ Configuration
+
+Variables apply to **stdio** (`env` in the client config) and **HTTP** (process environment). **Restart** after changes.
+
+**Source of truth for names, defaults, and clamp ranges:** [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md).  
+**Copy-paste connection JSON (single-container / MDC):** [docs/configuration-samples.md#connection-profiles-env-json](docs/configuration-samples.md#connection-profiles-env-json).
+
+### Required
+
+| Parameter | Description | Example |
+|-----------|-------------|---------|
+| `HANA_HOST` | Hostname or IP | `hana.company.com` |
+| `HANA_USER` | Database user | `DBADMIN` |
+| `HANA_PASSWORD` | Database password | *(secret)* |
+
+### Connection & TLS
+
+| Parameter | Default | Notes |
+|-----------|---------|--------|
+| `HANA_PORT` | `443` | MDC SQL ports often `3NN13` (e.g. `31013`) |
+| `HANA_SCHEMA` | — | Default when a tool omits `schema_name` |
+| `HANA_CONNECTION_TYPE` | `auto` | `auto`, `single_container`, `mdc_system`, `mdc_tenant` |
+| `HANA_INSTANCE_NUMBER` | — | MDC instance id (e.g. `10`) |
+| `HANA_DATABASE_NAME` | — | **Tenant** name for MDC (e.g. `HQQ`, `HQP`) — session database only |
+| `HANA_SSL` / `HANA_ENCRYPT` / `HANA_VALIDATE_CERT` | `true` | TLS and cert validation flags for the driver |
+
+### Logging
+
+| Parameter | Default | Notes |
+|-----------|---------|--------|
+| `LOG_LEVEL` | `info` | `error` … `debug` |
+| `ENABLE_FILE_LOGGING` | `false`* | `true` enables file logs |
+| `ENABLE_CONSOLE_LOGGING` | `true` | Often `false` for stdio to reduce stderr noise |
+
+\*Code default; examples frequently set file logging to `true`.
+
+### Limits (queries, lists, resources)
+
+| Parameter | Default | Purpose |
+|-----------|---------|---------|
+| `HANA_MAX_RESULT_ROWS` | `50` | Max rows per `hana_execute_query` page (SELECT/WITH) |
+| `HANA_MAX_RESULT_COLS` | `50` | Max columns per row returned |
+| `HANA_MAX_CELL_CHARS` | `200` | Truncate long cell text |
+| `HANA_QUERY_DEFAULT_OFFSET` | `0` | Default `offset` |
+| `HANA_LIST_DEFAULT_LIMIT` | `200` | List tools: default and max page size |
+| `HANA_RESOURCE_LIST_MAX_ITEMS` | `500` | Cap embedded names in `hana:///` payloads |
+| `HANA_QUERY_SNAPSHOT_TTL_MS` | `300000` | Snapshot id lifetime for query paging |
+
+### Business / domain JSON (`HANA_SEMANTICS_*`)
+
+| Parameter | Default | Purpose |
+|-----------|---------|---------|
+| `HANA_SEMANTICS_PATH` | — | File path to dictionary JSON (wins over URL) |
+| `HANA_SEMANTICS_URL` | — | HTTPS URL to same format |
+| `HANA_SEMANTICS_TTL_MS` | `60000` | Cache / reload behavior |
+
+Samples: [configuration-samples.md](docs/configuration-samples.md).
+
+---
+
+## 🔧 Troubleshooting
+
+| Symptom | Check |
+|---------|--------|
+| Connection refused | `HANA_HOST`, `HANA_PORT`, network path |
+| Auth failed / no client | Password, user, **`HANA_DATABASE_NAME`** on tenants; use connection test tool for driver message |
+| TLS errors | `HANA_VALIDATE_CERT`, trust store |
+| Wrong or empty objects | MDC: tenant drives visibility; identical schema names can differ by tenant |
+| SQL needs another database prefix | `hana_execute_query` does not rewrite SQL; use the three-part names your HANA expects (e.g. `HSP.SAPABAP1.TABLE`) while `HANA_DATABASE_NAME` stays the tenant you connect to (e.g. `HQP`) |
+
+**Debug:** `LOG_LEVEL=debug`, `ENABLE_CONSOLE_LOGGING=true`, restart.
 
 ---
 
 ## 🖥️ HANA MCP UI
-
-Web UI to configure environments, deploy to Claude Desktop, and test connectivity:
 
 ```bash
 npx hana-mcp-ui
 ```
 
 ![HANA MCP UI](docs/hana_mcp_ui.gif)
-
----
-
-## 🔧 Troubleshooting
-
-- **Connection refused**: Check HANA host and port.
-- **Authentication failed / No client available**: Verify user/password; for MDC tenants set `HANA_DATABASE_NAME` (e.g. `HQQ`). The connection test tool returns the last HANA error when the client is unavailable.
-- **SSL certificate error**: Set `HANA_VALIDATE_CERT=false` or install valid certificates.
-- **MDC**: If you omit `HANA_DATABASE_NAME` for a tenant, you may see auth failures. MDC often uses SQL port (e.g. 31013); set `HANA_PORT` and `HANA_INSTANCE_NUMBER` as required.
-
-**Debug**: `export LOG_LEVEL="debug"` and `export ENABLE_CONSOLE_LOGGING="true"`, then run the server.
 
 ---
 
@@ -267,29 +275,34 @@ npx hana-mcp-ui
 ```
 hana-mcp-server/
 ├── src/
-│   ├── server/           # MCP protocol, lifecycle, resources, HTTP transport
+│   ├── server/           # MCP lifecycle, resources, HTTP transport
 │   ├── tools/            # Schema, table, query, index, config tools
-│   ├── database/         # HANA client, connection manager, query executor
+│   ├── database/         # HANA client, connection manager, executor, query runner
+│   ├── semantics/        # Optional semantics / domain JSON loader
 │   ├── utils/            # Logger, config, validators, formatters
+│   ├── query-snapshot-store.js
 │   └── constants/        # MCP constants, tool definitions
 ├── tests/
-├── docs/
-└── hana-mcp-server.js    # Entry point
+├── docs/                 # README index, ENVIRONMENT.md, configuration-samples.md, diagrams
+└── hana-mcp-server.js    # stdio entry point
 ```
 
 ---
 
-## 📦 Package info
+## 📦 Package
 
-- **Size**: 21.7 kB
-- **Dependencies**: @sap/hana-client, axios, jose
-- **Node.js**: 18+
-- **Platforms**: macOS, Linux, Windows
+| | |
+|--|--|
+| **Runtime** | Node.js 18+ |
+| **Platforms** | macOS, Linux, Windows |
+| **Dependencies** | `@sap/hana-client`, `axios`, `jose` |
+
+---
 
 ## 🤝 Support
 
-- **Issues**: [GitHub Issues](https://github.com/hatrigt/hana-mcp-server/issues)
-- **UI**: [HANA MCP UI](https://www.npmjs.com/package/hana-mcp-ui)
+- **Issues:** [GitHub Issues](https://github.com/hatrigt/hana-mcp-server/issues)
+- **UI:** [HANA MCP UI](https://www.npmjs.com/package/hana-mcp-ui)
 
 ## 📄 License
 

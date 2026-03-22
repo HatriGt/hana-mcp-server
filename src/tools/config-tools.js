@@ -6,6 +6,7 @@ const { logger } = require('../utils/logger');
 const { config } = require('../utils/config');
 const { connectionManager } = require('../database/connection-manager');
 const Formatters = require('../utils/formatters');
+const { redactSecrets } = require('../utils/sensitive-redact');
 
 class ConfigTools {
   /**
@@ -44,7 +45,7 @@ class ConfigTools {
         return Formatters.createErrorResponse('Connection test failed!', errorMessage);
       }
     } catch (error) {
-      logger.error('Connection test error:', error.message);
+      logger.error('Connection test error:', redactSecrets(error.message));
       const displayConfig = config.getDisplayConfig();
       const errorMessage = Formatters.formatConnectionTest(displayConfig, false, error.message);
       return Formatters.createErrorResponse('Connection test failed!', errorMessage);

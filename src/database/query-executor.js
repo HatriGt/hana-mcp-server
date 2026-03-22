@@ -3,6 +3,7 @@
  */
 
 const { logger } = require('../utils/logger');
+const { redactSecrets } = require('../utils/sensitive-redact');
 const { connectionManager } = require('./connection-manager');
 const Validators = require('../utils/validators');
 
@@ -34,7 +35,7 @@ class QueryExecutor {
       logger.debug(`Query executed successfully, returned ${results.length} rows`);
       return results;
     } catch (error) {
-      logger.error(`Query execution failed: ${error.message}`);
+      logger.error(`Query execution failed: ${redactSecrets(error.message)}`);
       throw error;
     }
   }
@@ -65,6 +66,38 @@ class QueryExecutor {
   }
 
   /**
+   * Paginated schema names with total count (prefix LIKE, case-sensitive as HANA stores).
+   * @param {string} [prefix] empty = all
+   * @param {number} limit
+   * @param {number} offset
+   * @returns {Promise<{ names: string[], total: number }>}
+   */
+  static async getSchemasPage(prefix, limit, offset) {
+    const p = prefix && String(prefix).trim() ? String(prefix).trim() : '';
+    const like = p ? `${p}%` : '%';
+    const countSql = `SELECT COUNT(*) AS C FROM SYS.SCHEMAS WHERE SCHEMA_NAME LIKE ?`;
+    const listSql = `SELECT SCHEMA_NAME FROM SYS.SCHEMAS WHERE SCHEMA_NAME LIKE ? ORDER BY SCHEMA_NAME LIMIT ? OFFSET ?`;
+    const totalRow = await this.executeScalarQuery(countSql, [like]);
+    const total = totalRow != null ? Number(totalRow) : 0;
+    const results = await this.executeQuery(listSql, [like, limit, offset]);
+    return { names: results.map(row => row.SCHEMA_NAME), total };
+  }
+
+  /**
+   * SYS or "DB".SYS for MDC cross-tenant metadata (TABLE_COLUMNS, TABLES, INDEXES).
+   * @param {string|null|undefined} catalogDatabase validated identifier or empty
+   * @returns {string}
+   */
+  static _sysCatalogRef(catalogDatabase) {
+    const t =
+      catalogDatabase != null && typeof catalogDatabase === 'string' && catalogDatabase.trim()
+        ? catalogDatabase.trim()
+        : '';
+    if (!t) return 'SYS';
+    return `"${t}".SYS`;
+  }
+
+  /**
    * Get tables in a schema
    */
   static async getTables(schemaName) {
@@ -80,9 +113,30 @@ class QueryExecutor {
   }
 
   /**
+   * Paginated table names in a schema.
+   * @param {string} schemaName
+   * @param {string} [prefix]
+   * @param {number} limit
+   * @param {number} offset
+   * @returns {Promise<{ names: string[], total: number }>}
+   */
+  static async getTablesPage(schemaName, prefix, limit, offset, catalogDatabase) {
+    const p = prefix && String(prefix).trim() ? String(prefix).trim() : '';
+    const like = p ? `${p}%` : '%';
+    const sys = this._sysCatalogRef(catalogDatabase);
+    const countSql = `SELECT COUNT(*) AS C FROM ${sys}.TABLES WHERE SCHEMA_NAME = ? AND TABLE_NAME LIKE ?`;
+    const listSql = `SELECT TABLE_NAME FROM ${sys}.TABLES WHERE SCHEMA_NAME = ? AND TABLE_NAME LIKE ? ORDER BY TABLE_NAME LIMIT ? OFFSET ?`;
+    const totalRow = await this.executeScalarQuery(countSql, [schemaName, like]);
+    const total = totalRow != null ? Number(totalRow) : 0;
+    const results = await this.executeQuery(listSql, [schemaName, like, limit, offset]);
+    return { names: results.map(row => row.TABLE_NAME), total };
+  }
+
+  /**
    * Get table columns
    */
-  static async getTableColumns(schemaName, tableName) {
+  static async getTableColumns(schemaName, tableName, catalogDatabase) {
+    const sys = this._sysCatalogRef(catalogDatabase);
     const query = `
       SELECT 
         COLUMN_NAME,
@@ -94,7 +148,7 @@ class QueryExecutor {
         POSITION,
         COMMENTS
       FROM 
-        SYS.TABLE_COLUMNS
+        ${sys}.TABLE_COLUMNS
       WHERE 
         SCHEMA_NAME = ? AND TABLE_NAME = ?
       ORDER BY 
@@ -107,16 +161,17 @@ class QueryExecutor {
   /**
    * Get table indexes
    */
-  static async getTableIndexes(schemaName, tableName) {
+  static async getTableIndexes(schemaName, tableName, catalogDatabase) {
+    const sys = this._sysCatalogRef(catalogDatabase);
     const query = `
       SELECT 
         i.INDEX_NAME,
         i.INDEX_TYPE,
         ic.COLUMN_NAME
       FROM 
-        SYS.INDEX_COLUMNS ic
+        ${sys}.INDEX_COLUMNS ic
       JOIN 
-        SYS.INDEXES i ON ic.INDEX_NAME = i.INDEX_NAME 
+        ${sys}.INDEXES i ON ic.INDEX_NAME = i.INDEX_NAME 
         AND ic.SCHEMA_NAME = i.SCHEMA_NAME
       WHERE 
         ic.SCHEMA_NAME = ? AND ic.TABLE_NAME = ?
@@ -130,7 +185,8 @@ class QueryExecutor {
   /**
    * Get index details
    */
-  static async getIndexDetails(schemaName, tableName, indexName) {
+  static async getIndexDetails(schemaName, tableName, indexName, catalogDatabase) {
+    const sys = this._sysCatalogRef(catalogDatabase);
     const query = `
       SELECT 
         i.INDEX_NAME,
@@ -139,9 +195,9 @@ class QueryExecutor {
         ic.POSITION,
         ic."ORDER" AS SORT_ORDER
       FROM 
-        SYS.INDEXES i
+        ${sys}.INDEXES i
       JOIN 
-        SYS.INDEX_COLUMNS ic ON i.INDEX_NAME = ic.INDEX_NAME 
+        ${sys}.INDEX_COLUMNS ic ON i.INDEX_NAME = ic.INDEX_NAME 
         AND i.SCHEMA_NAME = ic.SCHEMA_NAME
       WHERE 
         i.SCHEMA_NAME = ? AND i.TABLE_NAME = ? AND i.INDEX_NAME = ?
@@ -176,8 +232,8 @@ class QueryExecutor {
         currentSchema: user.length > 0 ? user[0].CURRENT_SCHEMA : null
       };
     } catch (error) {
-      logger.error('Failed to get database info:', error.message);
-      return { error: error.message };
+      logger.error('Failed to get database info:', redactSecrets(error.message));
+      return { error: redactSecrets(error.message) };
     }
   }
 

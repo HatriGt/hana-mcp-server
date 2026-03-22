@@ -10,6 +10,8 @@ const { logger } = require('../utils/logger');
 const MCPHandler = require('./mcp-handler');
 const { ERROR_CODES } = require('../constants/mcp-constants');
 const { validateBearer } = require('./http-auth');
+const { redactSecrets } = require('../utils/sensitive-redact');
+const { isOriginAllowed } = require('./http-origin');
 
 const PORT = parseInt(process.env.MCP_HTTP_PORT, 10) || 3100;
 const HOST = process.env.MCP_HTTP_HOST || '127.0.0.1';
@@ -24,23 +26,20 @@ function sendResponse(res, statusCode, body) {
 }
 
 function sendJsonRpcError(res, id, code, message) {
+  const safe = redactSecrets(message != null ? String(message) : '');
   sendResponse(res, 200, {
     jsonrpc: '2.0',
     id: id ?? null,
-    error: { code, message }
+    error: { code, message: safe }
   });
 }
 
 const server = http.createServer(async (req, res) => {
   const origin = req.headers.origin;
-  if (origin) {
-    const allowed = process.env.MCP_HTTP_ALLOWED_ORIGINS || 'null';
-    const allowedList = allowed.split(',').map(s => s.trim());
-    if (!allowedList.includes('*') && !allowedList.includes(origin)) {
-      res.writeHead(403, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ jsonrpc: '2.0', error: { code: -32600, message: 'Invalid Origin' } }));
-      return;
-    }
+  if (origin && !isOriginAllowed(origin, process.env.MCP_HTTP_ALLOWED_ORIGINS)) {
+    res.writeHead(403, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ jsonrpc: '2.0', error: { code: -32600, message: 'Invalid Origin' } }));
+    return;
   }
 
   const path = (req.url || '').split('?')[0];
@@ -81,7 +80,12 @@ const server = http.createServer(async (req, res) => {
       const headers = { 'Content-Type': 'application/json' };
       if (err.wwwAuth) headers['WWW-Authenticate'] = err.wwwAuth;
       res.writeHead(status, headers);
-      res.end(JSON.stringify({ jsonrpc: '2.0', error: { code: -32600, message: err.message } }));
+      res.end(
+        JSON.stringify({
+          jsonrpc: '2.0',
+          error: { code: -32600, message: redactSecrets(err.message) }
+        })
+      );
       return;
     }
   }
@@ -116,8 +120,8 @@ const server = http.createServer(async (req, res) => {
       res.end();
     }
   } catch (err) {
-    logger.error(`HTTP MCP error: ${err.message}`);
-    sendJsonRpcError(res, request.id, ERROR_CODES.INTERNAL_ERROR, err.message);
+    logger.error(`HTTP MCP error: ${redactSecrets(err.message)}`);
+    sendJsonRpcError(res, request.id, ERROR_CODES.INTERNAL_ERROR, redactSecrets(err.message));
   }
 });
 
@@ -126,7 +130,7 @@ server.listen(PORT, HOST, () => {
 });
 
 server.on('error', (err) => {
-  logger.error(`HTTP server error: ${err.message}`);
+  logger.error(`HTTP server error: ${redactSecrets(err.message)}`);
   process.exit(1);
 });
 

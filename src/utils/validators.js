@@ -67,6 +67,26 @@ class Validators {
   }
 
   /**
+   * Validate optional MDC database name for cross-tenant SYS.* metadata (e.g. HSP).
+   * Same identifier rules as schema/table; no dots allowed.
+   */
+  static validateCatalogDatabaseName(name) {
+    if (!name || typeof name !== 'string') {
+      return { valid: false, error: 'Catalog database name must be a non-empty string' };
+    }
+
+    if (name.length > 128) {
+      return { valid: false, error: 'Catalog database name too long (max 128 characters)' };
+    }
+
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
+      return { valid: false, error: 'Invalid catalog database name format' };
+    }
+
+    return { valid: true };
+  }
+
+  /**
    * Validate index name
    */
   static validateIndexName(indexName) {

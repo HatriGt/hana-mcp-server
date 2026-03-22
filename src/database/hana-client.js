@@ -1,4 +1,5 @@
 const hana = require('@sap/hana-client');
+const { redactSecrets } = require('../utils/sensitive-redact');
 
 // Simple logger that doesn't interfere with JSON-RPC
 const log = (msg) => console.error(`[HANA Client] ${new Date().toISOString()}: ${msg}`);
@@ -42,8 +43,8 @@ async function createHanaClient(config) {
           statement.drop();
           return results;
         } catch (error) {
-          log('Query execution error:', error);
-          throw new Error(`Query execution failed: ${error.message}`);
+          log(`Query execution error: ${redactSecrets(error.message)}`);
+          throw new Error(`Query execution failed: ${redactSecrets(error.message)}`);
         }
       },
       
@@ -72,7 +73,7 @@ async function createHanaClient(config) {
         return new Promise((resolve, reject) => {
           connection.disconnect(err => {
             if (err) {
-              log('Error disconnecting from HANA:', err);
+              log(`Error disconnecting from HANA: ${redactSecrets(err.message)}`);
               reject(err);
             } else {
               log('Disconnected from HANA database');
@@ -83,7 +84,7 @@ async function createHanaClient(config) {
       }
     };
   } catch (error) {
-    log(`Failed to create HANA client: ${error.message}`);
+    log(`Failed to create HANA client: ${redactSecrets(error.message)}`);
     throw error;
   }
 }
@@ -113,7 +114,7 @@ function connect(connection, params) {
   return new Promise((resolve, reject) => {
     connection.connect(params, (err) => {
       if (err) {
-        reject(new Error(`HANA connection failed: ${err.message}`));
+        reject(new Error(`HANA connection failed: ${redactSecrets(err.message)}`));
       } else {
         resolve();
       }

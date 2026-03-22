@@ -3,6 +3,7 @@
  */
 
 const { logger } = require('../utils/logger');
+const { redactSecrets } = require('../utils/sensitive-redact');
 const { config } = require('../utils/config');
 const QueryExecutor = require('../database/query-executor');
 
@@ -87,7 +88,7 @@ async function listResources(cursor) {
     const nextCursor = hasMore ? Buffer.from(JSON.stringify({ offset: start + page.length }), 'utf8').toString('base64') : undefined;
     return { resources: page, nextCursor };
   } catch (err) {
-    logger.error('resources/list failed:', err.message);
+    logger.error('resources/list failed:', redactSecrets(err.message));
     return { resources: [], nextCursor: undefined };
   }
 }
@@ -110,16 +111,35 @@ async function readResource(uri) {
 
   try {
     if (parsed.type === 'schemas') {
-      const schemas = await QueryExecutor.getSchemas();
-      const text = JSON.stringify({ schemas }, null, 2);
+      const maxItems = config.getQueryLimits().resourceListMaxItems;
+      const { names, total } = await QueryExecutor.getSchemasPage('', maxItems + 1, 0);
+      const truncated = names.length > maxItems;
+      const schemas = truncated ? names.slice(0, maxItems) : names;
+      const text = JSON.stringify(
+        { schemas, totalSchemas: total, truncated, maxItems },
+        null,
+        2
+      );
       return {
         contents: [{ uri, mimeType: 'application/json', text }]
       };
     }
 
     if (parsed.type === 'schema') {
-      const tables = await QueryExecutor.getTables(parsed.schemaName);
-      const text = JSON.stringify({ schema: parsed.schemaName, tables }, null, 2);
+      const maxItems = config.getQueryLimits().resourceListMaxItems;
+      const { names, total } = await QueryExecutor.getTablesPage(
+        parsed.schemaName,
+        '',
+        maxItems + 1,
+        0
+      );
+      const truncated = names.length > maxItems;
+      const tables = truncated ? names.slice(0, maxItems) : names;
+      const text = JSON.stringify(
+        { schema: parsed.schemaName, tables, totalTables: total, truncated, maxItems },
+        null,
+        2
+      );
       return {
         contents: [{ uri, mimeType: 'application/json', text }]
       };
@@ -143,8 +163,11 @@ async function readResource(uri) {
       };
     }
   } catch (err) {
-    logger.error('resources/read failed:', err.message);
-    throw Object.assign(new Error(err.message || 'Resource read failed'), { code: -32603, data: { uri } });
+    logger.error('resources/read failed:', redactSecrets(err.message));
+    throw Object.assign(new Error(redactSecrets(err.message || 'Resource read failed')), {
+      code: -32603,
+      data: { uri }
+    });
   }
 
   throw Object.assign(new Error('Resource not found'), { code: -32002, data: { uri } });

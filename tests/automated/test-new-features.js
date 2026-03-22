@@ -134,13 +134,18 @@ async function runTests() {
   try {
     const list = await req('tools/list', {});
     assert(Array.isArray(list.result.tools), 'tools array');
-    assert(list.result.tools.length >= 9, 'at least 9 tools');
+    assert(list.result.tools.length >= 11, 'at least 11 tools');
     const first = list.result.tools[0];
     assert(first.annotations && typeof first.annotations.readOnlyHint === 'boolean', 'annotations');
     assert(first.title, 'title');
     const queryTool = list.result.tools.find((t) => t.name === 'hana_execute_query');
     assert(queryTool?.execution?.taskSupport === 'optional', 'taskSupport optional');
-    ok('Tools list returns tools with annotations, title, and hana_execute_query has taskSupport optional');
+    assert(queryTool?.outputSchema?.type === 'object', 'hana_execute_query outputSchema');
+    const listSchemasTool = list.result.tools.find((t) => t.name === 'hana_list_schemas');
+    assert(listSchemasTool?.outputSchema?.type === 'object', 'hana_list_schemas outputSchema');
+    assert(list.result.tools.some((t) => t.name === 'hana_explain_table'), 'hana_explain_table present');
+    assert(list.result.tools.some((t) => t.name === 'hana_query_next_page'), 'hana_query_next_page present');
+    ok('Tools list returns tools with annotations, title, outputSchema on query/list tools, new explain/next_page tools');
   } catch (e) {
     fail('Tools list', e);
   }

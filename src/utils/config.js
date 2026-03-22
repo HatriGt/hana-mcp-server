@@ -27,7 +27,37 @@ class Config {
       server: {
         logLevel: process.env.LOG_LEVEL || 'INFO',
         enableFileLogging: process.env.ENABLE_FILE_LOGGING === 'true',
-        enableConsoleLogging: process.env.ENABLE_CONSOLE_LOGGING !== 'false'
+        enableConsoleLogging: process.env.ENABLE_CONSOLE_LOGGING !== 'false',
+        maxResultRows: Math.min(
+          Math.max(parseInt(process.env.HANA_MAX_RESULT_ROWS, 10) || 50, 1),
+          10000
+        ),
+        maxResultCols: Math.min(
+          Math.max(parseInt(process.env.HANA_MAX_RESULT_COLS, 10) || 50, 1),
+          500
+        ),
+        maxCellChars: Math.min(
+          Math.max(parseInt(process.env.HANA_MAX_CELL_CHARS, 10) || 200, 1),
+          10000
+        ),
+        queryDefaultOffset: Math.max(parseInt(process.env.HANA_QUERY_DEFAULT_OFFSET, 10) || 0, 0),
+        listDefaultLimit: Math.min(
+          Math.max(parseInt(process.env.HANA_LIST_DEFAULT_LIMIT, 10) || 200, 1),
+          5000
+        ),
+        resourceListMaxItems: Math.min(
+          Math.max(parseInt(process.env.HANA_RESOURCE_LIST_MAX_ITEMS, 10) || 500, 1),
+          10000
+        ),
+        semanticsTtlMs: (() => {
+          const raw = parseInt(process.env.HANA_SEMANTICS_TTL_MS, 10);
+          const base = Number.isFinite(raw) ? raw : 60000;
+          return Math.min(Math.max(base, 0), 86400000);
+        })(),
+        querySnapshotTtlMs: Math.min(
+          Math.max(parseInt(process.env.HANA_QUERY_SNAPSHOT_TTL_MS, 10) || 300000, 10000),
+          3600000
+        )
       }
     };
   }
@@ -38,6 +68,21 @@ class Config {
 
   getServerConfig() {
     return this.config.server;
+  }
+
+  /** Limits for user-facing query tools (not internal metadata queries). */
+  getQueryLimits() {
+    const s = this.config.server;
+    return {
+      maxResultRows: s.maxResultRows,
+      maxResultCols: s.maxResultCols,
+      maxCellChars: s.maxCellChars,
+      defaultOffset: s.queryDefaultOffset,
+      listDefaultLimit: s.listDefaultLimit,
+      resourceListMaxItems: s.resourceListMaxItems,
+      semanticsTtlMs: s.semanticsTtlMs,
+      querySnapshotTtlMs: s.querySnapshotTtlMs
+    };
   }
 
   /**
@@ -140,7 +185,8 @@ class Config {
       HANA_CONNECTION_TYPE: process.env.HANA_CONNECTION_TYPE || 'NOT SET',
       HANA_SSL: process.env.HANA_SSL || 'NOT SET',
       HANA_ENCRYPT: process.env.HANA_ENCRYPT || 'NOT SET',
-      HANA_VALIDATE_CERT: process.env.HANA_VALIDATE_CERT || 'NOT SET'
+      HANA_VALIDATE_CERT: process.env.HANA_VALIDATE_CERT || 'NOT SET',
+      HANA_METADATA_CATALOG_DATABASE: process.env.HANA_METADATA_CATALOG_DATABASE || 'NOT SET'
     };
   }
 
@@ -190,6 +236,16 @@ class Config {
    */
   hasDefaultSchema() {
     return !!this.config.hana.schema;
+  }
+
+  /**
+   * Default database whose SYS.* catalog metadata tools read when connected to another MDC tenant.
+   * Empty/unset = use the connected database catalog only. Validated at tool boundary.
+   */
+  getMetadataCatalogDatabase() {
+    const v = process.env.HANA_METADATA_CATALOG_DATABASE;
+    if (v == null || !String(v).trim()) return null;
+    return String(v).trim();
   }
 }
 

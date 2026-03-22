@@ -3,6 +3,7 @@
  */
 
 const { logger } = require('../utils/logger');
+const { redactSecrets } = require('../utils/sensitive-redact');
 const { config } = require('../utils/config');
 const { createHanaClient } = require('./hana-client');
 
@@ -69,7 +70,7 @@ class ConnectionManager {
     } catch (error) {
       this.connectionRetries++;
       this.lastConnectionError = error;
-      logger.error(`Failed to connect to HANA (attempt ${this.connectionRetries}):`, error.message);
+      logger.error(`Failed to connect to HANA (attempt ${this.connectionRetries}):`, redactSecrets(error.message));
       
       if (this.connectionRetries < this.maxRetries) {
         logger.info(`Retrying connection in 2 seconds...`);
@@ -110,10 +111,10 @@ class ConnectionManager {
         };
       }
     } catch (error) {
-      logger.error('Connection test failed:', error.message);
+      logger.error('Connection test failed:', redactSecrets(error.message));
       return { 
         success: false, 
-        error: error.message 
+        error: redactSecrets(error.message) 
       };
     }
   }
@@ -135,7 +136,7 @@ class ConnectionManager {
         await this.client.disconnect();
         logger.info('HANA client disconnected');
       } catch (error) {
-        logger.error('Error disconnecting HANA client:', error.message);
+        logger.error('Error disconnecting HANA client:', redactSecrets(error.message));
       } finally {
         this.client = null;
         this.connectionRetries = 0;

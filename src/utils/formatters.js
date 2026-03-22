@@ -3,6 +3,7 @@
  */
 
 const { logger } = require('./logger');
+const { redactSecrets } = require('./sensitive-redact');
 
 class Formatters {
   /**
@@ -50,7 +51,9 @@ class Formatters {
    * Create an error response
    */
   static createErrorResponse(message, details = '') {
-    const text = details ? `${message}\n\n${details}` : message;
+    const safeMsg = redactSecrets(message);
+    const safeDetails = details ? redactSecrets(details) : '';
+    const text = safeDetails ? `${safeMsg}\n\n${safeDetails}` : safeMsg;
     return this.createResponse(`❌ ${text}`, 'text', undefined, true);
   }
 
@@ -66,13 +69,17 @@ class Formatters {
    * Format configuration display
    */
   static formatConfig(config) {
+    const pwdLine =
+      config.password === 'NOT SET' || config.password === 'SET (hidden)'
+        ? config.password
+        : '[REDACTED]';
     const lines = [
       'HANA Configuration:',
       '',
       `Host: ${config.host}`,
       `Port: ${config.port}`,
       `User: ${config.user}`,
-      `Password: ${config.password}`,
+      `Password: ${pwdLine}`,
       `Schema: ${config.schema}`,
       `SSL: ${config.ssl}`,
       ''
@@ -236,7 +243,7 @@ class Formatters {
   }
 
   /**
-   * Format query results as table
+   * Format query results as table (legacy / debugging)
    */
   static formatQueryResults(results, query) {
     const lines = [
@@ -268,6 +275,67 @@ class Formatters {
   }
 
   /**
+   * MCP tool result for hana_execute_query / hana_query_next_page: short text + structuredContent.
+   * @param {object} runResult from query-runner
+   * @param {string} queryPreview truncated SQL for display
+   * @param {string} [snapshotId]
+   */
+  static formatQueryToolResult(runResult, queryPreview, snapshotId) {
+    const q =
+      queryPreview.length > 200 ? `${queryPreview.slice(0, 200)}…` : queryPreview;
+    const structured = {
+      kind: runResult.kind,
+      truncated: runResult.truncated,
+      returnedRows: runResult.returnedRows,
+      maxRows: runResult.maxRows,
+      offset: runResult.offset,
+      nextOffset: runResult.nextOffset,
+      totalRows: runResult.totalRows,
+      columns: runResult.columns,
+      rows: runResult.rows,
+      columnsOmitted: runResult.columnsOmitted || 0,
+      appliedWrap: runResult.appliedWrap
+    };
+    if (snapshotId) {
+      structured.snapshotId = snapshotId;
+    }
+
+    let summary = `Query OK: ${runResult.returnedRows} row(s), columns=${runResult.columns.length}`;
+    if (runResult.columnsOmitted > 0) {
+      summary += ` (${runResult.columnsOmitted} column(s) omitted; see HANA_MAX_RESULT_COLS)`;
+    }
+    if (runResult.truncated) {
+      summary += `. Truncated: more rows exist. nextOffset=${runResult.nextOffset}`;
+      if (snapshotId) {
+        summary += `. snapshotId=${snapshotId} (use hana_query_next_page)`;
+      }
+    } else {
+      summary += '. Full page returned for this limit/offset.';
+    }
+    if (runResult.totalRows != null) {
+      summary += ` totalRows=${runResult.totalRows}`;
+    }
+    summary += ` | SQL preview: ${q}`;
+
+    return this.createResponse(summary, 'text', structured, false);
+  }
+
+  /**
+   * Structured list result for schemas/tables (Phase 2).
+   */
+  static formatNameListToolResult(label, names, totalAvailable, returned, truncated, nextOffset) {
+    const structured = {
+      items: names,
+      returned,
+      totalAvailable,
+      truncated,
+      nextOffset: truncated ? nextOffset : null
+    };
+    const summary = `${label}: showing ${returned} of ${totalAvailable}${truncated ? ` (truncated). nextOffset=${nextOffset}` : ''}.`;
+    return this.createResponse(summary, 'text', structured, false);
+  }
+
+  /**
    * Format connection test result
    */
   static formatConnectionTest(config, success, error = null, testResult = null) {
@@ -278,7 +346,7 @@ class Formatters {
       ];
 
       if (error) {
-        lines.push(`Error: ${error}`);
+        lines.push(`Error: ${redactSecrets(error)}`);
         lines.push('');
       }
 

@@ -1,15 +1,22 @@
 #!/usr/bin/env node
 /**
  * One-off: run a single SQL query via the MCP server and print the result.
- * Usage: HANA_HOST=... HANA_PASSWORD=... HANA_DATABASE_NAME=HSQ node tests/automated/run-query-once.js
- * Query is read from first argument or default below.
+ *
+ * Usage:
+ *   HANA_HOST=... HANA_PASSWORD=... HANA_DATABASE_NAME=HQP node tests/automated/run-query-once.js "<SQL>"
+ *
+ * HANA_DATABASE_NAME is the MDC tenant you connect to. SQL may still use three-part names
+ * (e.g. HSP.SAPABAP1.DFKKOP) when your HANA instance requires them—the query text is not rewritten.
+ *
+ * Query: first CLI argument, or default SELECT 1 FROM DUMMY.
+ * HANA_RUN_QUERY_TIMEOUT_MS — optional (default 120000).
  */
 const path = require('path');
 const { spawn } = require('child_process');
 
 const serverScript = path.join(__dirname, '..', '..', 'hana-mcp-server.js');
 const projectRoot = path.join(__dirname, '..', '..');
-const query = process.argv[2] || `SELECT COUNT(*) AS cnt, YYATYPE FROM SAPABAP1.dfkkop WHERE yyELSCLAIMNUM != '' GROUP BY YYATYPE`;
+const query = process.argv[2] || 'SELECT 1 AS ok FROM DUMMY';
 
 const serverEnv = {
   ...process.env,
@@ -36,6 +43,10 @@ const server = spawn(process.execPath, [serverScript], {
 });
 
 const pending = new Map();
+const TIMEOUT_MS = Math.min(
+  Math.max(parseInt(process.env.HANA_RUN_QUERY_TIMEOUT_MS, 10) || 120000, 5000),
+  600000
+);
 
 server.stdout.on('data', (data) => {
   const line = data.toString().trim();
@@ -58,7 +69,7 @@ function send(id, method, params) {
         pending.delete(id);
         reject(new Error('Timeout'));
       }
-    }, 15000);
+    }, TIMEOUT_MS);
     pending.set(id, (response) => {
       clearTimeout(t);
       if (response.error) reject(new Error(response.error.message || JSON.stringify(response.error)));
@@ -90,6 +101,11 @@ async function main() {
     if (c.type === 'text') {
       console.log(c.text);
     }
+  }
+  const sc = res.result?.structuredContent;
+  if (sc && Array.isArray(sc.rows) && sc.rows.length > 0) {
+    console.log('\n--- rows (structuredContent) ---');
+    console.log(JSON.stringify(sc.rows, null, 2));
   }
 }
 

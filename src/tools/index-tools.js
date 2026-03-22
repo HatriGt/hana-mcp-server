@@ -7,6 +7,8 @@ const { config } = require('../utils/config');
 const QueryExecutor = require('../database/query-executor');
 const Validators = require('../utils/validators');
 const Formatters = require('../utils/formatters');
+const { redactSecrets } = require('../utils/sensitive-redact');
+const TableTools = require('./table-tools');
 
 class IndexTools {
   /**
@@ -46,9 +48,14 @@ class IndexTools {
     if (!tableValidation.valid) {
       return Formatters.createErrorResponse('Invalid table name', tableValidation.error);
     }
+
+    const { catalogDatabase, error: catErr } = TableTools._resolveCatalogDatabase(args);
+    if (catErr) {
+      return Formatters.createErrorResponse('Invalid metadata catalog', catErr);
+    }
     
     try {
-      const results = await QueryExecutor.getTableIndexes(schema_name, table_name);
+      const results = await QueryExecutor.getTableIndexes(schema_name, table_name, catalogDatabase);
       
       if (results.length === 0) {
         return Formatters.createResponse(`📋 No indexes found for table '${schema_name}.${table_name}'.`);
@@ -72,7 +79,7 @@ class IndexTools {
       
       return Formatters.createResponse(formattedIndexes);
     } catch (error) {
-      logger.error('Error listing indexes:', error.message);
+      logger.error('Error listing indexes:', redactSecrets(error.message));
       return Formatters.createErrorResponse('Error listing indexes', error.message);
     }
   }
@@ -119,15 +126,25 @@ class IndexTools {
     if (!indexValidation.valid) {
       return Formatters.createErrorResponse('Invalid index name', indexValidation.error);
     }
+
+    const { catalogDatabase, error: catErr } = TableTools._resolveCatalogDatabase(args);
+    if (catErr) {
+      return Formatters.createErrorResponse('Invalid metadata catalog', catErr);
+    }
     
     try {
-      const results = await QueryExecutor.getIndexDetails(schema_name, table_name, index_name);
+      const results = await QueryExecutor.getIndexDetails(
+        schema_name,
+        table_name,
+        index_name,
+        catalogDatabase
+      );
       
       const formattedDetails = Formatters.formatIndexDetails(results, schema_name, table_name, index_name);
       
       return Formatters.createResponse(formattedDetails);
     } catch (error) {
-      logger.error('Error describing index:', error.message);
+      logger.error('Error describing index:', redactSecrets(error.message));
       return Formatters.createErrorResponse('Error describing index', error.message);
     }
   }
