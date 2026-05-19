@@ -29,6 +29,16 @@ class Config {
         enableFileLogging: process.env.ENABLE_FILE_LOGGING === 'true',
         enableConsoleLogging: process.env.ENABLE_CONSOLE_LOGGING !== 'false',
         queryLimitsEnabled: process.env.HANA_QUERY_LIMITS_ENABLED === 'true',
+        queryTimeoutMs: Math.max(parseInt(process.env.HANA_QUERY_TIMEOUT_MS, 10) || 0, 0),
+        connectionPoolSize: Math.min(
+          Math.max(parseInt(process.env.HANA_CONNECTION_POOL_SIZE, 10) || 3, 1),
+          20
+        ),
+        auditEnabled: process.env.HANA_AUDIT_ENABLED === 'true',
+        auditLogFile: process.env.HANA_AUDIT_LOG_FILE || './hana-audit.log',
+        allowInsert: process.env.HANA_ALLOW_INSERT === 'true',
+        allowUpdate: process.env.HANA_ALLOW_UPDATE === 'true',
+        allowDelete: process.env.HANA_ALLOW_DELETE === 'true',
         maxResultRows: Math.min(
           Math.max(parseInt(process.env.HANA_MAX_RESULT_ROWS, 10) || 50, 1),
           10000
@@ -76,6 +86,7 @@ class Config {
     const s = this.config.server;
     return {
       queryLimitsEnabled: s.queryLimitsEnabled,
+      queryTimeoutMs: s.queryTimeoutMs,
       maxResultRows: s.maxResultRows,
       maxResultCols: s.maxResultCols,
       maxCellChars: s.maxCellChars,
@@ -83,7 +94,24 @@ class Config {
       listDefaultLimit: s.listDefaultLimit,
       resourceListMaxItems: s.resourceListMaxItems,
       semanticsTtlMs: s.semanticsTtlMs,
-      querySnapshotTtlMs: s.querySnapshotTtlMs
+      querySnapshotTtlMs: s.querySnapshotTtlMs,
+      allowInsert: s.allowInsert,
+      allowUpdate: s.allowUpdate,
+      allowDelete: s.allowDelete
+    };
+  }
+
+  getAuditConfig() {
+    const s = this.config.server;
+    return {
+      enabled: s.auditEnabled,
+      logFile: s.auditLogFile
+    };
+  }
+
+  getPoolConfig() {
+    return {
+      poolSize: this.config.server.connectionPoolSize
     };
   }
 
@@ -188,7 +216,14 @@ class Config {
       HANA_SSL: process.env.HANA_SSL || 'NOT SET',
       HANA_ENCRYPT: process.env.HANA_ENCRYPT || 'NOT SET',
       HANA_VALIDATE_CERT: process.env.HANA_VALIDATE_CERT || 'NOT SET',
-      HANA_METADATA_CATALOG_DATABASE: process.env.HANA_METADATA_CATALOG_DATABASE || 'NOT SET'
+      HANA_METADATA_CATALOG_DATABASE: process.env.HANA_METADATA_CATALOG_DATABASE || 'NOT SET',
+      HANA_QUERY_TIMEOUT_MS: process.env.HANA_QUERY_TIMEOUT_MS || 'NOT SET',
+      HANA_CONNECTION_POOL_SIZE: process.env.HANA_CONNECTION_POOL_SIZE || 'NOT SET',
+      HANA_AUDIT_ENABLED: process.env.HANA_AUDIT_ENABLED || 'NOT SET',
+      HANA_AUDIT_LOG_FILE: process.env.HANA_AUDIT_LOG_FILE || 'NOT SET',
+      HANA_ALLOW_INSERT: process.env.HANA_ALLOW_INSERT || 'NOT SET',
+      HANA_ALLOW_UPDATE: process.env.HANA_ALLOW_UPDATE || 'NOT SET',
+      HANA_ALLOW_DELETE: process.env.HANA_ALLOW_DELETE || 'NOT SET'
     };
   }
 

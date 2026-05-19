@@ -52,21 +52,61 @@ Variables are read at process start. Restart the MCP server after changing them.
 
 These apply to **user-facing** `hana_execute_query` (and shape how much data enters the model context). Internal metadata queries used by the server bypass the SELECT wrapper but still use the shared HANA client.
 
-**Limits are opt-in.** Set `HANA_QUERY_LIMITS_ENABLED=true` to activate all guardrails below. Without it, queries run without any row/column/cell caps and results are returned as-is.
+**Limits are opt-in.** Set `HANA_QUERY_LIMITS_ENABLED=true` to activate automatic row/column/cell guardrails. Without it, server-side caps (`HANA_MAX_RESULT_*`) are ignored — but user-supplied `maxRows`, `offset`, and `includeTotal` arguments still work regardless of this flag.
 
 | Variable | Default | Hard bounds (code) | Description |
 |----------|---------|--------------------|-------------|
 | `HANA_QUERY_LIMITS_ENABLED` | `false` | — | Set to `true` to enable row/column/cell guardrails and `LIMIT`/`OFFSET` wrapping for `SELECT`/`WITH` queries. When `false`, all `HANA_MAX_RESULT_*` variables are ignored. |
+| `HANA_QUERY_TIMEOUT_MS` | `0` (disabled) | ≥0 | Statement timeout in milliseconds for `hana_execute_query`. When non-zero, the running HANA statement is cancelled and the tool returns a timeout error. Per-call `timeout_ms` arg overrides this. `0` = no timeout. |
 | `HANA_MAX_RESULT_ROWS` | `50` | 1–10000 | Maximum rows returned **per page** for a single-statement `SELECT` / `WITH` after server wrapping with `LIMIT`/`OFFSET`. Tool arg `maxRows` (or legacy `limit`) is clamped to this. Only active when `HANA_QUERY_LIMITS_ENABLED=true`. |
 | `HANA_MAX_RESULT_COLS` | `50` | 1–500 | Maximum columns per row in tool output; extra columns are omitted (`columnsOmitted` in `structuredContent`). Only active when `HANA_QUERY_LIMITS_ENABLED=true`. |
 | `HANA_MAX_CELL_CHARS` | `200` | 1–10000 | String length per cell after coercion; longer values are truncated with `…`. Only active when `HANA_QUERY_LIMITS_ENABLED=true`. |
 | `HANA_QUERY_DEFAULT_OFFSET` | `0` | ≥0 | Row offset when the tool does not pass `offset`. Only active when `HANA_QUERY_LIMITS_ENABLED=true`. |
 
-**Related tool arguments:** `hana_execute_query` supports `query`, `parameters`, `offset`, `maxRows`, `limit` (alias), `includeTotal` / `include_total` (optional `COUNT(*)` over the same subquery; extra DB cost).
+**Related tool arguments:** `hana_execute_query` supports `query`, `parameters`, `offset`, `maxRows`, `limit` (alias), `includeTotal` / `include_total` (optional `COUNT(*)` over the same subquery; extra DB cost), and `timeout_ms` (per-call override for `HANA_QUERY_TIMEOUT_MS`).
 
 **Non-SELECT statements** are executed without the wrapper; the server still caps the **returned** row array length in memory to `maxRows + 1` for safety. Very large procedural result sets are a known limitation—prefer narrower SQL or pagination at the source.
 
 **Implementation:** [`src/database/query-runner.js`](../src/database/query-runner.js), [`src/tools/query-tools.js`](../src/tools/query-tools.js).
+
+---
+
+## 3a. Connection pool
+
+| Variable | Default | Hard bounds | Description |
+|----------|---------|-------------|-------------|
+| `HANA_CONNECTION_POOL_SIZE` | `3` | 1–20 | Number of HANA connections maintained in the pool. Connections are created lazily. Concurrent tool calls share the pool; requests queue when all slots are busy. |
+
+**Implementation:** [`src/database/connection-pool.js`](../src/database/connection-pool.js), [`src/database/connection-manager.js`](../src/database/connection-manager.js).
+
+---
+
+## 3b. Audit logging
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `HANA_AUDIT_ENABLED` | `false` | Set to `true` to append one JSON line per `hana_execute_query` call to the audit log file. |
+| `HANA_AUDIT_LOG_FILE` | `./hana-audit.log` | Path to the audit log file. Uses `fs.appendFile` (non-blocking). Failures in audit writes are logged to stderr but never surfaced to the MCP client. |
+
+Each audit entry contains: `timestamp`, `tool`, `queryPreview` (first 200 chars), `durationMs`, `rowCount`, `error` (boolean), and on error: `sqlCode`, `sqlState`.
+
+**Implementation:** [`src/utils/audit-logger.js`](../src/utils/audit-logger.js).
+
+---
+
+## 3c. DML restrictions
+
+INSERT, UPDATE, and DELETE are **blocked by default**. Each must be explicitly enabled via its own env var. This is an opt-in allowlist: if the variable is absent or anything other than `true`, the operation is rejected before the query reaches HANA.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `HANA_ALLOW_INSERT` | `false` | Set to `true` to permit `INSERT` statements via `hana_execute_query`. |
+| `HANA_ALLOW_UPDATE` | `false` | Set to `true` to permit `UPDATE` statements. |
+| `HANA_ALLOW_DELETE` | `false` | Set to `true` to permit `DELETE` and `TRUNCATE` statements. |
+
+Blocked statements return an `Operation not permitted` error immediately without touching the database. The check covers the first keyword of the statement only; `HANA_ALLOW_DELETE` covers both `DELETE` and `TRUNCATE`.
+
+**Implementation:** [`src/utils/validators.js`](../src/utils/validators.js) (`validateDmlRestrictions`), [`src/tools/query-tools.js`](../src/tools/query-tools.js).
 
 ---
 
@@ -147,7 +187,10 @@ Used by [`src/server/http-index.js`](../src/server/http-index.js) and [`src/serv
 |-----------|-----------|
 | HANA client | `HANA_*` (connection block) |
 | Logging | `LOG_LEVEL`, `ENABLE_FILE_LOGGING`, `ENABLE_CONSOLE_LOGGING` |
-| `hana_execute_query` / `hana_query_next_page` | `HANA_QUERY_LIMITS_ENABLED`, `HANA_MAX_RESULT_ROWS`, `HANA_MAX_RESULT_COLS`, `HANA_MAX_CELL_CHARS`, `HANA_QUERY_DEFAULT_OFFSET`, `HANA_QUERY_SNAPSHOT_TTL_MS` |
+| `hana_execute_query` / `hana_query_next_page` | `HANA_QUERY_LIMITS_ENABLED`, `HANA_QUERY_TIMEOUT_MS`, `HANA_MAX_RESULT_ROWS`, `HANA_MAX_RESULT_COLS`, `HANA_MAX_CELL_CHARS`, `HANA_QUERY_DEFAULT_OFFSET`, `HANA_QUERY_SNAPSHOT_TTL_MS` |
+| Connection pool | `HANA_CONNECTION_POOL_SIZE` |
+| Audit logging | `HANA_AUDIT_ENABLED`, `HANA_AUDIT_LOG_FILE` |
+| DML restrictions | `HANA_ALLOW_INSERT`, `HANA_ALLOW_UPDATE`, `HANA_ALLOW_DELETE` |
 | `hana_list_schemas` / `hana_list_tables` | `HANA_LIST_DEFAULT_LIMIT` |
 | `hana_explain_table` (business/domain semantics JSON) | `HANA_SEMANTICS_PATH`, `HANA_SEMANTICS_URL`, `HANA_SEMANTICS_TTL_MS`, `HANA_METADATA_CATALOG_DATABASE`, tool `catalog_database` |
 | `hana:///` resources | `HANA_RESOURCE_LIST_MAX_ITEMS` (and HANA connectivity) |

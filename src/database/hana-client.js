@@ -31,43 +31,71 @@ async function createHanaClient(config) {
     // Return client wrapper with utility methods
     return {
       /**
-       * Execute a SQL query
-       * @param {string} sql - SQL query to execute
-       * @param {Array} params - Query parameters
-       * @returns {Promise<Array>} Query results
+       * Execute a SQL query with optional timeout.
+       * @param {string} sql
+       * @param {Array} params
+       * @param {number} [timeoutMs] - 0 or omitted = no timeout
+       * @returns {Promise<Array>}
        */
-      async query(sql, params = []) {
+      async query(sql, params = [], timeoutMs = 0) {
+        let statement;
+        let timer;
         try {
-          const statement = connection.prepare(sql);
-          const results = await executeStatement(statement, params);
+          statement = connection.prepare(sql);
+          const execPromise = executeStatement(statement, params);
+
+          let results;
+          if (timeoutMs > 0) {
+            const timeoutPromise = new Promise((_, reject) => {
+              timer = setTimeout(() => {
+                try { connection.cancel(); } catch (_) {}
+                const err = new Error(`Query timed out after ${timeoutMs}ms`);
+                err.code = 'QUERY_TIMEOUT';
+                err.sqlState = '57014';
+                reject(err);
+              }, timeoutMs);
+            });
+            results = await Promise.race([execPromise, timeoutPromise]);
+          } else {
+            results = await execPromise;
+          }
+
+          if (timer) clearTimeout(timer);
           statement.drop();
           return results;
         } catch (error) {
+          if (timer) clearTimeout(timer);
+          try { if (statement) statement.drop(); } catch (_) {}
           log(`Query execution error: ${redactSecrets(error.message)}`);
-          throw new Error(`Query execution failed: ${redactSecrets(error.message)}`);
+          const enriched = new Error(redactSecrets(error.message));
+          enriched.sqlCode = error.code != null ? Number(error.code) : null;
+          enriched.sqlState = error.sqlState || error.sqlstate || null;
+          enriched.isTimeout = error.code === 'QUERY_TIMEOUT';
+          throw enriched;
         }
       },
-      
+
       /**
-       * Execute a SQL query that returns a single value
-       * @param {string} sql - SQL query to execute
-       * @param {Array} params - Query parameters
-       * @returns {Promise<any>} Query result
+       * Execute a SQL query that returns a single value.
        */
-      async queryScalar(sql, params = []) {
-        const results = await this.query(sql, params);
+      async queryScalar(sql, params = [], timeoutMs = 0) {
+        const results = await this.query(sql, params, timeoutMs);
         if (results.length === 0) return null;
-        
         const firstRow = results[0];
         const keys = Object.keys(firstRow);
         if (keys.length === 0) return null;
-        
         return firstRow[keys[0]];
       },
-      
+
       /**
-       * Disconnect from HANA database
-       * @returns {Promise<void>}
+       * Cancel the currently executing statement on this connection.
+       */
+      cancel() {
+        try { connection.cancel(); } catch (_) {}
+      },
+
+      /**
+       * Disconnect from HANA database.
        */
       async disconnect() {
         return new Promise((resolve, reject) => {

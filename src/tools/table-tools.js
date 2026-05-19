@@ -9,28 +9,11 @@ const Validators = require('../utils/validators');
 const Formatters = require('../utils/formatters');
 const { redactSecrets } = require('../utils/sensitive-redact');
 const { getTableSemantics } = require('../semantics/loader');
+const { resolveCatalogDatabase } = require('../utils/catalog-utils');
 
 class TableTools {
-  /**
-   * Optional MDC database for SYS.* metadata: tool arg overrides HANA_METADATA_CATALOG_DATABASE.
-   * @returns {{ catalogDatabase: string|null, error?: string }}
-   */
   static _resolveCatalogDatabase(args) {
-    const fromArg =
-      args && args.catalog_database != null && String(args.catalog_database).trim()
-        ? String(args.catalog_database).trim()
-        : '';
-    const fromEnv = config.getMetadataCatalogDatabase();
-    const merged = fromArg || (fromEnv || '');
-    if (!merged) return { catalogDatabase: null };
-    const v = Validators.validateCatalogDatabaseName(merged);
-    if (!v.valid) {
-      const detail = fromArg
-        ? `catalog_database: ${v.error}`
-        : `HANA_METADATA_CATALOG_DATABASE: ${v.error}`;
-      return { catalogDatabase: null, error: detail };
-    }
-    return { catalogDatabase: merged };
+    return resolveCatalogDatabase(args);
   }
 
   /**

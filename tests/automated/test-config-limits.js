@@ -145,4 +145,60 @@ withEnv(
 );
 console.log('  ok: auto MDC / single-container inference');
 
+// ── HANA_QUERY_LIMITS_ENABLED ─────────────────────────────────────────────
+
+withEnv({ HANA_QUERY_LIMITS_ENABLED: null }, (c) => {
+  assert.strictEqual(c.getQueryLimits().queryLimitsEnabled, false);
+});
+console.log('  ok: queryLimitsEnabled defaults to false when env not set');
+
+withEnv({ HANA_QUERY_LIMITS_ENABLED: 'true' }, (c) => {
+  assert.strictEqual(c.getQueryLimits().queryLimitsEnabled, true);
+});
+console.log('  ok: queryLimitsEnabled=true when HANA_QUERY_LIMITS_ENABLED=true');
+
+withEnv({ HANA_QUERY_LIMITS_ENABLED: 'false' }, (c) => {
+  assert.strictEqual(c.getQueryLimits().queryLimitsEnabled, false);
+});
+console.log('  ok: queryLimitsEnabled=false when HANA_QUERY_LIMITS_ENABLED=false');
+
+// ── HANA_QUERY_TIMEOUT_MS ─────────────────────────────────────────────────
+
+withEnv({ HANA_QUERY_TIMEOUT_MS: null }, (c) => {
+  assert.strictEqual(c.getQueryLimits().queryTimeoutMs, 0);
+});
+console.log('  ok: queryTimeoutMs defaults to 0 (disabled) when env not set');
+
+withEnv({ HANA_QUERY_TIMEOUT_MS: '5000' }, (c) => {
+  assert.strictEqual(c.getQueryLimits().queryTimeoutMs, 5000);
+});
+console.log('  ok: queryTimeoutMs=5000 parsed');
+
+withEnv({ HANA_QUERY_TIMEOUT_MS: '-100' }, (c) => {
+  assert.strictEqual(c.getQueryLimits().queryTimeoutMs, 0);
+});
+console.log('  ok: queryTimeoutMs floored at 0');
+
+// ── HANA_CONNECTION_POOL_SIZE ─────────────────────────────────────────────
+
+withEnv({ HANA_CONNECTION_POOL_SIZE: null }, (c) => {
+  assert.strictEqual(c.getPoolConfig().poolSize, 3);
+});
+console.log('  ok: poolSize defaults to 3');
+
+withEnv({ HANA_CONNECTION_POOL_SIZE: '10' }, (c) => {
+  assert.strictEqual(c.getPoolConfig().poolSize, 10);
+});
+console.log('  ok: poolSize=10 parsed');
+
+withEnv({ HANA_CONNECTION_POOL_SIZE: '0' }, (c) => {
+  assert.strictEqual(c.getPoolConfig().poolSize, 3); // 0 is falsy — parseInt('0')||3 = 3
+});
+console.log('  ok: poolSize falls back to default 3 when set to 0 (falsy)');
+
+withEnv({ HANA_CONNECTION_POOL_SIZE: '999' }, (c) => {
+  assert.strictEqual(c.getPoolConfig().poolSize, 20);
+});
+console.log('  ok: poolSize clamped to 20 when too large');
+
 console.log('\nDone.');

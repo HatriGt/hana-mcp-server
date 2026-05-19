@@ -69,6 +69,7 @@ const mockExec = {
 (async () => {
   await withRunnerEnv(
     {
+      HANA_QUERY_LIMITS_ENABLED: 'true',
       HANA_MAX_RESULT_ROWS: '2',
       HANA_MAX_RESULT_COLS: '2',
       HANA_MAX_CELL_CHARS: '100',
@@ -93,7 +94,7 @@ const mockExec = {
   console.log('  ok: SELECT wrapped LIMIT/OFFSET + column cap + truncation');
 
   await withRunnerEnv(
-    { HANA_MAX_RESULT_ROWS: '50', HANA_MAX_RESULT_COLS: '50', HANA_MAX_CELL_CHARS: '200' },
+    { HANA_QUERY_LIMITS_ENABLED: 'true', HANA_MAX_RESULT_ROWS: '50', HANA_MAX_RESULT_COLS: '50', HANA_MAX_CELL_CHARS: '200' },
     mockExec,
     async (executeUserQuery) => {
       lastQuery = lastParams = lastScalarSql = lastScalarParams = null;

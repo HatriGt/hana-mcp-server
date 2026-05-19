@@ -178,7 +178,9 @@ Further notes: [ENVIRONMENT.md §9](docs/ENVIRONMENT.md#9-security-notes).
 | Area | What callers get |
 |------|-------------------|
 | **Schema** | Paged schema/table lists, column metadata, connectivity checks |
-| **SQL** | Parameterized execution; caps on SELECT/WITH rows, columns, and cell size; optional totals and continuation via `hana_query_next_page` where supported |
+| **SQL** | Parameterized execution; optional row/column/cell caps; paging via `maxRows`/`offset`/`includeTotal`; continuation via `hana_query_next_page` |
+| **Discovery** | `hana_list_constraints`, `hana_list_foreign_keys`, `hana_get_table_stats`, `hana_get_sample_data`, `hana_search_columns`, `hana_list_views`, `hana_describe_view`, `hana_list_synonyms`, `hana_list_procedures`, `hana_describe_procedure`, `hana_explain_plan`, `hana_list_privileges` |
+| **DML guard** | INSERT / UPDATE / DELETE / TRUNCATE blocked by default; opt-in per operation via `HANA_ALLOW_*` |
 | **Resources** | `hana:///` URIs for list/read; large payloads flagged with `truncated` metadata |
 | **Domain knowledge (optional)** | JSON overlay for **`hana_explain_table`** — [configuration-samples.md](docs/configuration-samples.md) |
 
@@ -224,13 +226,26 @@ Variables apply to **stdio** (`env` in the client config) and **HTTP** (process 
 
 | Parameter | Default | Purpose |
 |-----------|---------|---------|
-| `HANA_MAX_RESULT_ROWS` | `50` | Max rows per `hana_execute_query` page (SELECT/WITH) |
-| `HANA_MAX_RESULT_COLS` | `50` | Max columns per row returned |
-| `HANA_MAX_CELL_CHARS` | `200` | Truncate long cell text |
-| `HANA_QUERY_DEFAULT_OFFSET` | `0` | Default `offset` |
+| `HANA_QUERY_LIMITS_ENABLED` | `false` | Set to `true` to enable automatic row/column/cell caps. When `false`, user-provided `maxRows`, `offset`, and `includeTotal` still work. |
+| `HANA_QUERY_TIMEOUT_MS` | `0` | Statement timeout (ms); `0` = disabled. Per-call `timeout_ms` overrides. |
+| `HANA_MAX_RESULT_ROWS` | `50` | Max rows per `hana_execute_query` page (active when limits enabled) |
+| `HANA_MAX_RESULT_COLS` | `50` | Max columns per row returned (active when limits enabled) |
+| `HANA_MAX_CELL_CHARS` | `200` | Truncate long cell text (active when limits enabled) |
+| `HANA_QUERY_DEFAULT_OFFSET` | `0` | Default `offset` (active when limits enabled) |
 | `HANA_LIST_DEFAULT_LIMIT` | `200` | List tools: default and max page size |
 | `HANA_RESOURCE_LIST_MAX_ITEMS` | `500` | Cap embedded names in `hana:///` payloads |
 | `HANA_QUERY_SNAPSHOT_TTL_MS` | `300000` | Snapshot id lifetime for query paging |
+| `HANA_CONNECTION_POOL_SIZE` | `3` | HANA connection pool size (1–20) |
+
+### DML permissions
+
+INSERT, UPDATE, and DELETE are **blocked by default**. Set each to `true` to permit:
+
+| Parameter | Default | Purpose |
+|-----------|---------|---------|
+| `HANA_ALLOW_INSERT` | `false` | Permit `INSERT` via `hana_execute_query` |
+| `HANA_ALLOW_UPDATE` | `false` | Permit `UPDATE` via `hana_execute_query` |
+| `HANA_ALLOW_DELETE` | `false` | Permit `DELETE` and `TRUNCATE` via `hana_execute_query` |
 
 ### Business / domain JSON (`HANA_SEMANTICS_*`)
 

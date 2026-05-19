@@ -37,7 +37,8 @@ const QUERY_RESULT_OUTPUT_SCHEMA = {
     rows: { type: 'array' },
     columnsOmitted: { type: 'number' },
     appliedWrap: { type: 'boolean' },
-    snapshotId: { type: 'string' }
+    snapshotId: { type: 'string' },
+    elapsedMs: { anyOf: [{ type: 'number' }, { type: 'null' }] }
   },
   required: [
     'kind',
@@ -314,7 +315,7 @@ const TOOLS = [
     name: 'hana_execute_query',
     title: 'Execute SQL query',
     description:
-      'Execute SQL against HANA. When HANA_QUERY_LIMITS_ENABLED=true, SELECT/WITH queries are wrapped with LIMIT/OFFSET (HANA_MAX_RESULT_ROWS) and row/column/cell caps apply; results are returned as-is otherwise. Use limit, offset, maxRows, includeTotal as needed. If truncated, snapshotId may be returned for hana_query_next_page.',
+      'Execute SQL against HANA. When HANA_QUERY_LIMITS_ENABLED=true, SELECT/WITH queries are wrapped with LIMIT/OFFSET (HANA_MAX_RESULT_ROWS) and row/column/cell caps apply; results are returned as-is otherwise. INSERT/UPDATE/DELETE are blocked by default; set HANA_ALLOW_INSERT, HANA_ALLOW_UPDATE, HANA_ALLOW_DELETE=true individually to permit each. Use limit, offset, maxRows, includeTotal as needed. If truncated, snapshotId may be returned for hana_query_next_page.',
     annotations: {
       readOnlyHint: false,
       destructiveHint: true,
@@ -352,6 +353,10 @@ const TOOLS = [
           type: 'boolean',
           description:
             'If true, run COUNT(*) on the same SELECT subquery (extra cost). Only for SELECT/WITH.'
+        },
+        timeout_ms: {
+          type: 'number',
+          description: 'Query timeout in milliseconds. 0 or omitted uses HANA_QUERY_TIMEOUT_MS (default 0 = disabled).'
         }
       },
       required: ['query']
@@ -388,6 +393,188 @@ const TOOLS = [
       required: ['snapshot_id', 'offset']
     },
     outputSchema: QUERY_RESULT_OUTPUT_SCHEMA
+  },
+
+  // ─── Discovery tools ───────────────────────────────────────────────────────
+
+  {
+    name: 'hana_list_constraints',
+    title: 'List table constraints',
+    description: 'List primary key, unique, check, and foreign key constraints for a table (SYS.CONSTRAINTS + SYS.REFERENTIAL_CONSTRAINTS).',
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        schema_name:      { type: 'string', description: 'Schema name (defaults to HANA_SCHEMA)' },
+        table_name:       { type: 'string', description: 'Table name' },
+        catalog_database: { type: 'string', description: 'MDC catalog database for SYS.* (overrides HANA_METADATA_CATALOG_DATABASE)' }
+      },
+      required: ['table_name']
+    }
+  },
+  {
+    name: 'hana_get_table_stats',
+    title: 'Get table statistics',
+    description: 'Return row count, table type, column-store flag, primary key flag, and disk size (requires MONITORING privilege for disk size) from SYS.TABLES and SYS.M_TABLE_SIZES.',
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        schema_name: { type: 'string', description: 'Schema name (defaults to HANA_SCHEMA)' },
+        table_name:  { type: 'string', description: 'Table name' }
+      },
+      required: ['table_name']
+    }
+  },
+  {
+    name: 'hana_list_views',
+    title: 'List views in a schema',
+    description: 'List views in a schema from SYS.VIEWS. Supports prefix filter and pagination.',
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        schema_name: { type: 'string', description: 'Schema name (defaults to HANA_SCHEMA)' },
+        prefix:      { type: 'string', description: 'Filter view names by prefix' },
+        limit:       { type: 'number', description: 'Max results (capped by HANA_LIST_DEFAULT_LIMIT)' },
+        offset:      { type: 'number', description: 'Pagination offset' }
+      },
+      required: []
+    }
+  },
+  {
+    name: 'hana_describe_view',
+    title: 'Describe a view',
+    description: 'Return the view definition (SQL) and column metadata from SYS.VIEWS and SYS.VIEW_COLUMNS.',
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        schema_name:      { type: 'string', description: 'Schema name (defaults to HANA_SCHEMA)' },
+        view_name:        { type: 'string', description: 'View name' },
+        catalog_database: { type: 'string', description: 'MDC catalog database for SYS.*' }
+      },
+      required: ['view_name']
+    }
+  },
+  {
+    name: 'hana_list_synonyms',
+    title: 'List synonyms in a schema',
+    description: 'List synonyms in a schema from SYS.SYNONYMS, showing target object schema, name, and type.',
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        schema_name: { type: 'string', description: 'Schema name (defaults to HANA_SCHEMA)' },
+        prefix:      { type: 'string', description: 'Filter synonym names by prefix' },
+        limit:       { type: 'number' },
+        offset:      { type: 'number' }
+      },
+      required: []
+    }
+  },
+  {
+    name: 'hana_list_procedures',
+    title: 'List stored procedures in a schema',
+    description: 'List stored procedures and their parameter counts from SYS.PROCEDURES.',
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        schema_name: { type: 'string', description: 'Schema name (defaults to HANA_SCHEMA)' },
+        prefix:      { type: 'string', description: 'Filter procedure names by prefix' },
+        limit:       { type: 'number' },
+        offset:      { type: 'number' }
+      },
+      required: []
+    }
+  },
+  {
+    name: 'hana_describe_procedure',
+    title: 'Describe a stored procedure',
+    description: 'Return parameter names, types (IN/OUT/INOUT), data types, and positions from SYS.PROCEDURE_PARAMETERS.',
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        schema_name:      { type: 'string', description: 'Schema name (defaults to HANA_SCHEMA)' },
+        procedure_name:   { type: 'string', description: 'Procedure name' },
+        catalog_database: { type: 'string', description: 'MDC catalog database for SYS.*' }
+      },
+      required: ['procedure_name']
+    }
+  },
+  {
+    name: 'hana_search_columns',
+    title: 'Search columns by name pattern',
+    description: 'Find all columns matching a LIKE pattern across all tables (or within a schema). Uses SYS.TABLE_COLUMNS. Results capped at 1000.',
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        column_pattern: { type: 'string', description: 'LIKE pattern (e.g. %CUSTOMER_ID%, BUKRS)' },
+        schema_name:    { type: 'string', description: 'Optional schema filter' },
+        limit:          { type: 'number', description: 'Max results (hard cap 1000)' }
+      },
+      required: ['column_pattern']
+    }
+  },
+  {
+    name: 'hana_get_sample_data',
+    title: 'Get sample rows from a table',
+    description: 'Fetch the first N rows from a table using SELECT TOP. Result is shaped by the same row/column/cell caps as hana_execute_query.',
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        schema_name: { type: 'string', description: 'Schema name (defaults to HANA_SCHEMA)' },
+        table_name:  { type: 'string', description: 'Table name' },
+        limit:       { type: 'number', description: 'Number of rows (default 10, max HANA_MAX_RESULT_ROWS)' }
+      },
+      required: ['table_name']
+    },
+    outputSchema: QUERY_RESULT_OUTPUT_SCHEMA
+  },
+  {
+    name: 'hana_explain_plan',
+    title: 'Explain query execution plan',
+    description: 'Run EXPLAIN PLAN for a SELECT/WITH query and return operator tree from EXPLAIN_PLAN_TABLE. Only SELECT/WITH are accepted.',
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'SELECT or WITH query to explain (must not contain DML/DDL)' }
+      },
+      required: ['query']
+    }
+  },
+  {
+    name: 'hana_list_foreign_keys',
+    title: 'List foreign keys on a table',
+    description: 'List referential constraints (foreign keys) showing column, referenced table/column, and delete rule from SYS.REFERENTIAL_CONSTRAINTS.',
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        schema_name:      { type: 'string', description: 'Schema name (defaults to HANA_SCHEMA)' },
+        table_name:       { type: 'string', description: 'Table name' },
+        catalog_database: { type: 'string', description: 'MDC catalog database for SYS.*' }
+      },
+      required: ['table_name']
+    }
+  },
+  {
+    name: 'hana_list_privileges',
+    title: 'List effective privileges',
+    description: 'List effective privileges for a user (or CURRENT_USER if omitted) from SYS.EFFECTIVE_PRIVILEGES. Requires CATALOG READ privilege or querying own privileges.',
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        grantee: { type: 'string', description: 'Database user to query. Omit for current user.' }
+      },
+      required: []
+    }
   }
 ];
 
@@ -397,7 +584,13 @@ const TOOL_CATEGORIES = {
   SCHEMA: ['hana_list_schemas'],
   TABLE: ['hana_list_tables', 'hana_describe_table', 'hana_explain_table'],
   INDEX: ['hana_list_indexes', 'hana_describe_index'],
-  QUERY: ['hana_execute_query', 'hana_query_next_page']
+  QUERY: ['hana_execute_query', 'hana_query_next_page'],
+  DISCOVERY: [
+    'hana_list_constraints', 'hana_get_table_stats', 'hana_list_views', 'hana_describe_view',
+    'hana_list_synonyms', 'hana_list_procedures', 'hana_describe_procedure',
+    'hana_search_columns', 'hana_get_sample_data', 'hana_explain_plan',
+    'hana_list_foreign_keys', 'hana_list_privileges'
+  ]
 };
 
 // Get tool by name
