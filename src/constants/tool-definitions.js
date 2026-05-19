@@ -314,7 +314,7 @@ const TOOLS = [
     name: 'hana_execute_query',
     title: 'Execute SQL query',
     description:
-      'Execute SQL against HANA. SELECT/WITH queries are wrapped with LIMIT/OFFSET (HANA_MAX_RESULT_ROWS). Use limit, offset, maxRows, includeTotal as needed. If truncated, snapshotId may be returned for hana_query_next_page.',
+      'Execute SQL against HANA. When HANA_QUERY_LIMITS_ENABLED=true, SELECT/WITH queries are wrapped with LIMIT/OFFSET (HANA_MAX_RESULT_ROWS) and row/column/cell caps apply; results are returned as-is otherwise. Use limit, offset, maxRows, includeTotal as needed. If truncated, snapshotId may be returned for hana_query_next_page.',
     annotations: {
       readOnlyHint: false,
       destructiveHint: true,

@@ -28,6 +28,7 @@ class Config {
         logLevel: process.env.LOG_LEVEL || 'INFO',
         enableFileLogging: process.env.ENABLE_FILE_LOGGING === 'true',
         enableConsoleLogging: process.env.ENABLE_CONSOLE_LOGGING !== 'false',
+        queryLimitsEnabled: process.env.HANA_QUERY_LIMITS_ENABLED === 'true',
         maxResultRows: Math.min(
           Math.max(parseInt(process.env.HANA_MAX_RESULT_ROWS, 10) || 50, 1),
           10000
@@ -74,6 +75,7 @@ class Config {
   getQueryLimits() {
     const s = this.config.server;
     return {
+      queryLimitsEnabled: s.queryLimitsEnabled,
       maxResultRows: s.maxResultRows,
       maxResultCols: s.maxResultCols,
       maxCellChars: s.maxCellChars,

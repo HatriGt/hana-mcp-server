@@ -82,6 +82,34 @@ function shapeRows(rows, maxCols, maxCellChars, maxDataRows) {
  */
 async function executeUserQuery(query, parameters = [], args = {}) {
   const limits = config.getQueryLimits();
+
+  if (!limits.queryLimitsEnabled) {
+    const rawRows = await QueryExecutor.executeQuery(query, parameters || []);
+    const columns = rawRows.length > 0 ? Object.keys(rawRows[0]) : [];
+    const rows = rawRows.map((row) => {
+      const out = {};
+      for (const key of columns) {
+        const v = row[key];
+        if (v === null || v === undefined) { out[key] = v; continue; }
+        out[key] = typeof v === 'object' ? JSON.stringify(v) : String(v);
+      }
+      return out;
+    });
+    return {
+      kind: isSingleSelectableStatement(query) ? 'select' : 'other',
+      columns,
+      rows,
+      truncated: false,
+      returnedRows: rows.length,
+      maxRows: null,
+      offset: 0,
+      nextOffset: null,
+      totalRows: null,
+      columnsOmitted: 0,
+      appliedWrap: false
+    };
+  }
+
   const maxRowsCap = limits.maxResultRows;
   const requestedMax = args.maxRows != null ? Number(args.maxRows) : maxRowsCap;
   const effectiveMax = Math.min(

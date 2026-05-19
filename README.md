@@ -248,6 +248,7 @@ Samples: [configuration-samples.md](docs/configuration-samples.md).
 
 | Symptom | Check |
 |---------|--------|
+| `spawn npx ENOENT` / `spawn hana-mcp-server ENOENT` in client logs | Client cannot find `npx` / `hana-mcp-server` on `PATH` — see [Client cannot find `npx`](#client-cannot-find-npx-spawn-enoent) below |
 | Connection refused | `HANA_HOST`, `HANA_PORT`, network path |
 | Auth failed / no client | Password, user, **`HANA_DATABASE_NAME`** on tenants; use connection test tool for driver message |
 | TLS errors | `HANA_VALIDATE_CERT`, trust store |
@@ -255,6 +256,53 @@ Samples: [configuration-samples.md](docs/configuration-samples.md).
 | SQL needs another database prefix | `hana_execute_query` does not rewrite SQL; use the three-part names your HANA expects (e.g. `HSP.SAPABAP1.TABLE`) while `HANA_DATABASE_NAME` stays the tenant you connect to (e.g. `HQP`) |
 
 **Debug:** `LOG_LEVEL=debug`, `ENABLE_CONSOLE_LOGGING=true`, restart.
+
+### Client cannot find `npx` (`spawn ENOENT`)
+
+GUI clients launched from the Dock or Start Menu (Claude Desktop, Cursor, VS Code, …) inherit a minimal `PATH` and may not see Node tooling installed under `/opt/homebrew/bin`, `~/.nvm/...`, `mise`, or `volta`. This affects **every** `npx`-based MCP, not just this server. The error appears in MCP client logs as:
+
+```text
+Connection failed: spawn npx ENOENT
+```
+
+Pick **one** fix:
+
+1. **Symlink `npx` / `node` into a GUI-visible path** (macOS, Homebrew):
+
+   ```bash
+   ln -s "$(which npx)"  /usr/local/bin/npx
+   ln -s "$(which node)" /usr/local/bin/node
+   ```
+
+2. **Use absolute paths in the MCP config** — most portable, no `PATH` dependency. Resolve paths with `which node` and `npm root -g`:
+
+   ```json
+   {
+     "mcpServers": {
+       "hana": {
+         "type": "stdio",
+         "command": "/opt/homebrew/bin/node",
+         "args": ["/opt/homebrew/lib/node_modules/hana-mcp-server/hana-mcp-server.js"],
+         "env": { "HANA_HOST": "...", "HANA_USER": "...", "HANA_PASSWORD": "..." }
+       }
+     }
+   }
+   ```
+
+   Requires a one-time `npm install -g hana-mcp-server`.
+
+3. **Inject `PATH` into the MCP `env` block** — keeps the `npx` form:
+
+   ```json
+   "env": {
+     "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
+     "HANA_HOST": "...",
+     "HANA_USER": "...",
+     "HANA_PASSWORD": "..."
+   }
+   ```
+
+Restart the MCP client after the change. If `npx` then fails with `EPERM` on `~/.npm/_cacache`, the npm cache has root-owned files from a previous `sudo npm` — fix with `sudo chown -R "$(whoami)" ~/.npm` or set `"NPM_CONFIG_CACHE": "/tmp/hana-mcp-npm-cache"` in the same `env` block.
 
 ---
 

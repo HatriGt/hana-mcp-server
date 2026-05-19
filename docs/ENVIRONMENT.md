@@ -52,12 +52,15 @@ Variables are read at process start. Restart the MCP server after changing them.
 
 These apply to **user-facing** `hana_execute_query` (and shape how much data enters the model context). Internal metadata queries used by the server bypass the SELECT wrapper but still use the shared HANA client.
 
+**Limits are opt-in.** Set `HANA_QUERY_LIMITS_ENABLED=true` to activate all guardrails below. Without it, queries run without any row/column/cell caps and results are returned as-is.
+
 | Variable | Default | Hard bounds (code) | Description |
 |----------|---------|--------------------|-------------|
-| `HANA_MAX_RESULT_ROWS` | `50` | 1–10000 | Maximum rows returned **per page** for a single-statement `SELECT` / `WITH` after server wrapping with `LIMIT`/`OFFSET`. Tool arg `maxRows` (or legacy `limit`) is clamped to this. |
-| `HANA_MAX_RESULT_COLS` | `50` | 1–500 | Maximum columns per row in tool output; extra columns are omitted (`columnsOmitted` in `structuredContent`). |
-| `HANA_MAX_CELL_CHARS` | `200` | 1–10000 | String length per cell after coercion; longer values are truncated with `…`. |
-| `HANA_QUERY_DEFAULT_OFFSET` | `0` | ≥0 | Row offset when the tool does not pass `offset`. |
+| `HANA_QUERY_LIMITS_ENABLED` | `false` | — | Set to `true` to enable row/column/cell guardrails and `LIMIT`/`OFFSET` wrapping for `SELECT`/`WITH` queries. When `false`, all `HANA_MAX_RESULT_*` variables are ignored. |
+| `HANA_MAX_RESULT_ROWS` | `50` | 1–10000 | Maximum rows returned **per page** for a single-statement `SELECT` / `WITH` after server wrapping with `LIMIT`/`OFFSET`. Tool arg `maxRows` (or legacy `limit`) is clamped to this. Only active when `HANA_QUERY_LIMITS_ENABLED=true`. |
+| `HANA_MAX_RESULT_COLS` | `50` | 1–500 | Maximum columns per row in tool output; extra columns are omitted (`columnsOmitted` in `structuredContent`). Only active when `HANA_QUERY_LIMITS_ENABLED=true`. |
+| `HANA_MAX_CELL_CHARS` | `200` | 1–10000 | String length per cell after coercion; longer values are truncated with `…`. Only active when `HANA_QUERY_LIMITS_ENABLED=true`. |
+| `HANA_QUERY_DEFAULT_OFFSET` | `0` | ≥0 | Row offset when the tool does not pass `offset`. Only active when `HANA_QUERY_LIMITS_ENABLED=true`. |
 
 **Related tool arguments:** `hana_execute_query` supports `query`, `parameters`, `offset`, `maxRows`, `limit` (alias), `includeTotal` / `include_total` (optional `COUNT(*)` over the same subquery; extra DB cost).
 
@@ -144,7 +147,7 @@ Used by [`src/server/http-index.js`](../src/server/http-index.js) and [`src/serv
 |-----------|-----------|
 | HANA client | `HANA_*` (connection block) |
 | Logging | `LOG_LEVEL`, `ENABLE_FILE_LOGGING`, `ENABLE_CONSOLE_LOGGING` |
-| `hana_execute_query` / `hana_query_next_page` | `HANA_MAX_RESULT_ROWS`, `HANA_MAX_RESULT_COLS`, `HANA_MAX_CELL_CHARS`, `HANA_QUERY_DEFAULT_OFFSET`, `HANA_QUERY_SNAPSHOT_TTL_MS` |
+| `hana_execute_query` / `hana_query_next_page` | `HANA_QUERY_LIMITS_ENABLED`, `HANA_MAX_RESULT_ROWS`, `HANA_MAX_RESULT_COLS`, `HANA_MAX_CELL_CHARS`, `HANA_QUERY_DEFAULT_OFFSET`, `HANA_QUERY_SNAPSHOT_TTL_MS` |
 | `hana_list_schemas` / `hana_list_tables` | `HANA_LIST_DEFAULT_LIMIT` |
 | `hana_explain_table` (business/domain semantics JSON) | `HANA_SEMANTICS_PATH`, `HANA_SEMANTICS_URL`, `HANA_SEMANTICS_TTL_MS`, `HANA_METADATA_CATALOG_DATABASE`, tool `catalog_database` |
 | `hana:///` resources | `HANA_RESOURCE_LIST_MAX_ITEMS` (and HANA connectivity) |
