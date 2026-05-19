@@ -8,6 +8,54 @@ All notable changes to this project are documented here. Versions follow [Semant
 
 _No changes yet._
 
+## [0.3.0] — 2026-05-19
+
+**Minor** release. Adds 12 discovery tools, opt-in DML guard, explicit connection pool configuration, query limits opt-in flag, and fixes for HANA Cloud catalog column names discovered during live testing.
+
+### Added
+
+- **12 discovery tools** — comprehensive schema inspection without writing SQL:
+  - `hana_list_constraints` — primary key, unique, and check constraints for a table.
+  - `hana_list_foreign_keys` — referential constraints with referenced table and delete rule.
+  - `hana_get_table_stats` — row count (live `COUNT(*)`), table type, column-store flag, disk size.
+  - `hana_get_sample_data` — `TOP N` rows from any table.
+  - `hana_search_columns` — find columns by pattern across all tables in a schema.
+  - `hana_list_views` / `hana_describe_view` — list views and fetch their SQL definition and columns.
+  - `hana_list_synonyms` — synonyms with target object schema, name, and type.
+  - `hana_list_procedures` / `hana_describe_procedure` — list stored procedures and inspect their parameters.
+  - `hana_explain_plan` — `EXPLAIN PLAN` for any `SELECT`/`WITH` query; returns the operator tree.
+  - `hana_list_privileges` — effective privileges for the current user or a named grantee.
+
+- **DML restrictions** — INSERT, UPDATE, DELETE, and TRUNCATE are **blocked by default**. Opt-in per operation via `HANA_ALLOW_INSERT`, `HANA_ALLOW_UPDATE`, `HANA_ALLOW_DELETE`. Error returned before the statement reaches HANA.
+
+- **Connection pool** — `ConnectionPool` class with lazy slot creation, FIFO request queue, `markForReset` on connection error, and graceful `drain` on shutdown. Configurable via `HANA_CONNECTION_POOL_SIZE` (default `3`, max `20`).
+
+- **`HANA_QUERY_LIMITS_ENABLED`** — query guardrails are now **opt-in** (default `false`). Server-side row/column/cell caps apply only when set to `true`; user-supplied `maxRows`, `offset`, and `includeTotal` always work.
+
+- **`HANA_QUERY_TIMEOUT_MS`** — statement-level timeout for `hana_execute_query`; `0` = disabled. Per-call `timeout_ms` argument overrides.
+
+- **Audit logger** — optional per-query audit trail (`HANA_AUDIT_ENABLED`, `HANA_AUDIT_LOG_FILE`). Each entry is a JSON line with timestamp, query preview, duration, row count, and error details.
+
+- **Live integration tests** — `test-all-tools.js` extended with DML restriction checks (all four operations verified blocked; SELECT still passes), concurrent pool queries (3 parallel), and snapshot/next-page round-trip against real HANA.
+
+- **Unit tests** — `test-connection-pool.js` (9 cases: acquire, release, reuse, queue, reset, drain, stats), `test-dml-restrictions.js` (validators, config env parsing, query-tools gate), expanded `test-config-limits.js` (pool size, timeout, limits-enabled flag).
+
+### Fixed
+
+- **`hana_list_constraints`** — replaced non-existent `CONSTRAINT_TYPE` column with `IS_PRIMARY_KEY` and `IS_UNIQUE_KEY` boolean flags (`SYS.CONSTRAINTS` on HANA Cloud).
+- **`hana_get_table_stats`** — `RECORD_COUNT` absent from `SYS.TABLES` on HANA Cloud; row count now via a separate `COUNT(*)` query.
+- **`hana_explain_plan`** — `OBJECT_NAME`/`OBJECT_SCHEMA` not present in `EXPLAIN_PLAN_TABLE` on HANA Cloud; corrected to `TABLE_NAME`/`SCHEMA_NAME`.
+- **`hana_search_columns`** — live test was passing `pattern` instead of the required `column_pattern` parameter name.
+- **Query runner** — `maxRows`, `offset`, and `includeTotal` were silently ignored when `HANA_QUERY_LIMITS_ENABLED=false`; all three now work independently of the limits flag.
+
+### Changed
+
+- **README** — Capabilities table lists all 12 discovery tools and DML guard; Configuration table adds `HANA_QUERY_LIMITS_ENABLED`, `HANA_QUERY_TIMEOUT_MS`, `HANA_CONNECTION_POOL_SIZE`.
+- **`docs/ENVIRONMENT.md`** — §3 clarifies `maxRows`/`offset`/`includeTotal` are honoured regardless of `HANA_QUERY_LIMITS_ENABLED`; §3a–§3c document pool, audit logging, and DML restrictions.
+- **`.markdownlint.json`** — suppresses pre-existing project-wide MD013/MD051/MD060 warnings.
+
+---
+
 ## [0.2.2] — 2026-03-22
 
 **Patch** release after **`0.2.1`**: cross-tenant SYS metadata (`HANA_METADATA_CATALOG_DATABASE` / `catalog_database`), semantics for **`hana_explain_table`**, query paging (**`hana_query_next_page`** / snapshots), sensitive value redaction, expanded docs (`docs/ENVIRONMENT.md`, configuration samples, local HTTP guide), and broader automated test coverage.

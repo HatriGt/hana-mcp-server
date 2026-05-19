@@ -107,34 +107,119 @@ class Validators {
   }
 
   /**
-   * Validate SQL query
+   * Validate SQL query.
+   * @param {string} query
+   * @param {{ mode?: 'open'|'select-only' }} [options]
+   *   'select-only': only SELECT/WITH allowed, no unquoted semicolons.
+   *   'open' (default): reject multi-statement injection and dangerous DDL/DML.
    */
-  static validateQuery(query) {
+  static validateQuery(query, options = {}) {
     if (!query || typeof query !== 'string') {
       return { valid: false, error: 'Query must be a non-empty string' };
     }
-    
-    if (query.trim().length === 0) {
+
+    const trimmed = query.trim().replace(/;+\s*$/u, '').trim();
+    if (!trimmed) {
       return { valid: false, error: 'Query cannot be empty' };
     }
-    
-    // Basic SQL injection prevention - check for suspicious patterns
-    const suspiciousPatterns = [
-      /;\s*drop\s+table/i,
-      /;\s*delete\s+from/i,
-      /;\s*truncate\s+table/i,
-      /;\s*alter\s+table/i,
-      /;\s*create\s+table/i,
-      /;\s*drop\s+database/i,
-      /;\s*shutdown/i
-    ];
-    
-    for (const pattern of suspiciousPatterns) {
-      if (pattern.test(query)) {
-        return { valid: false, error: 'Query contains potentially dangerous operations' };
+
+    const mode = options.mode || 'open';
+
+    if (mode === 'select-only') {
+      const upper = trimmed.toUpperCase();
+      if (!upper.startsWith('SELECT') && !upper.startsWith('WITH')) {
+        return { valid: false, error: 'Only SELECT and WITH queries are permitted here' };
+      }
+      if (this._hasUnquotedSemicolon(trimmed)) {
+        return { valid: false, error: 'Multi-statement queries are not permitted' };
+      }
+      return { valid: true };
+    }
+
+    // open mode: reject comment injection and multi-statement DDL/DML
+    if (this._hasUnquotedComment(trimmed)) {
+      return { valid: false, error: 'SQL comments (-- or /* */) are not permitted in queries' };
+    }
+
+    if (this._hasUnquotedSemicolon(trimmed)) {
+      return { valid: false, error: 'Multi-statement queries are not permitted' };
+    }
+
+    return { valid: true };
+  }
+
+  /**
+   * Returns true if `sql` contains an unquoted semicolon (outside string literals).
+   */
+  static _hasUnquotedSemicolon(sql) {
+    let inString = false;
+    for (let i = 0; i < sql.length; i++) {
+      const ch = sql[i];
+      if (ch === "'" && !inString) { inString = true; continue; }
+      if (ch === "'" && inString) {
+        // Escaped quote ''
+        if (sql[i + 1] === "'") { i++; continue; }
+        inString = false;
+        continue;
+      }
+      if (!inString && ch === ';') return true;
+    }
+    return false;
+  }
+
+  /**
+   * Returns true if `sql` contains an unquoted -- or /* comment marker.
+   */
+  static _hasUnquotedComment(sql) {
+    let inString = false;
+    for (let i = 0; i < sql.length; i++) {
+      const ch = sql[i];
+      if (ch === "'" && !inString) { inString = true; continue; }
+      if (ch === "'" && inString) {
+        if (sql[i + 1] === "'") { i++; continue; }
+        inString = false;
+        continue;
+      }
+      if (!inString) {
+        if (ch === '-' && sql[i + 1] === '-') return true;
+        if (ch === '/' && sql[i + 1] === '*') return true;
       }
     }
-    
+    return false;
+  }
+
+  /**
+   * Validate a LIKE pattern for column search (alphanumeric, _, %, spaces allowed).
+   */
+  static validateColumnPattern(pattern) {
+    if (!pattern || typeof pattern !== 'string') {
+      return { valid: false, error: 'Column pattern must be a non-empty string' };
+    }
+    if (pattern.trim().length === 0) {
+      return { valid: false, error: 'Column pattern cannot be empty' };
+    }
+    if (pattern.length > 256) {
+      return { valid: false, error: 'Column pattern too long (max 256 characters)' };
+    }
+    return { valid: true };
+  }
+
+  /**
+   * Check DML restrictions from server config limits.
+   * @param {string} query - Raw SQL statement
+   * @param {{ allowInsert?: boolean, allowUpdate?: boolean, allowDelete?: boolean }} permissions
+   */
+  static validateDmlRestrictions(query, permissions = {}) {
+    const upper = query.trimStart().toUpperCase();
+    if (upper.startsWith('INSERT') && !permissions.allowInsert) {
+      return { valid: false, error: 'INSERT operations are not enabled (set HANA_ALLOW_INSERT=true to permit)' };
+    }
+    if (upper.startsWith('UPDATE') && !permissions.allowUpdate) {
+      return { valid: false, error: 'UPDATE operations are not enabled (set HANA_ALLOW_UPDATE=true to permit)' };
+    }
+    if ((upper.startsWith('DELETE') || upper.startsWith('TRUNCATE')) && !permissions.allowDelete) {
+      return { valid: false, error: 'DELETE/TRUNCATE operations are not enabled (set HANA_ALLOW_DELETE=true to permit)' };
+    }
     return { valid: true };
   }
 

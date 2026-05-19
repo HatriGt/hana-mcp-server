@@ -1,177 +1,137 @@
 /**
- * HANA Database Connection Manager
+ * HANA Database Connection Manager — pool-backed.
  */
 
 const { logger } = require('../utils/logger');
 const { redactSecrets } = require('../utils/sensitive-redact');
 const { config } = require('../utils/config');
 const { createHanaClient } = require('./hana-client');
+const { ConnectionPool } = require('./connection-pool');
 
 class ConnectionManager {
   constructor() {
-    this.client = null;
-    this.isConnecting = false;
-    this.lastConnectionAttempt = null;
-    this.connectionRetries = 0;
-    this.maxRetries = 3;
+    this._pool = null;
     this.lastConnectionError = null;
   }
 
+  _getPool() {
+    if (this._pool) return this._pool;
+    const { poolSize } = config.getPoolConfig();
+    this._pool = new ConnectionPool(poolSize, async () => {
+      const dbType = config.getHanaDatabaseType();
+      logger.info(`Creating new HANA connection (${dbType})...`);
+      const client = await createHanaClient(config);
+      logger.info('HANA connection established');
+      return client;
+    });
+    return this._pool;
+  }
+
   /**
-   * Get or create HANA client connection
+   * Run fn with a pooled connection.
+   * This is the primary API for all query operations.
+   * @param {(client: object) => Promise<any>} fn
+   * @param {number} [timeoutMs] - passed through to hana-client.query() inside fn
+   * @returns {Promise<any>}
+   */
+  async withConnection(fn) {
+    if (!config.isHanaConfigured()) {
+      throw new Error('HANA configuration is incomplete. Check HANA_HOST, HANA_USER, HANA_PASSWORD.');
+    }
+    const pool = this._getPool();
+    let client;
+    try {
+      client = await pool.acquire();
+    } catch (err) {
+      this.lastConnectionError = err;
+      logger.error('Failed to acquire connection from pool:', redactSecrets(err.message));
+      throw err;
+    }
+
+    let markForReset = false;
+    try {
+      const result = await fn(client);
+      return result;
+    } catch (err) {
+      if (err.isTimeout) markForReset = true;
+      throw err;
+    } finally {
+      pool.release(client, markForReset);
+    }
+  }
+
+  /**
+   * Backward-compatible single-client accessor (used by config-tools, resources, lifecycle).
+   * Returns the first available client or null on failure.
    */
   async getClient() {
-    // Return existing client if available
-    if (this.client) {
-      return this.client;
-    }
-
-    // Prevent multiple simultaneous connection attempts
-    if (this.isConnecting) {
-      logger.debug('Connection already in progress, waiting...');
-      while (this.isConnecting) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-      return this.client;
-    }
-
-    // Check if configuration is valid
-    if (!config.isHanaConfigured()) {
-      logger.warn('HANA configuration is incomplete');
+    if (!config.isHanaConfigured()) return null;
+    try {
+      const pool = this._getPool();
+      const client = await pool.acquire();
+      pool.release(client);
+      return client;
+    } catch (err) {
+      this.lastConnectionError = err;
+      logger.error('getClient failed:', redactSecrets(err.message));
       return null;
     }
-
-    return this.connect();
   }
 
   /**
-   * Establish connection to HANA database
-   */
-  async connect() {
-    this.isConnecting = true;
-    this.lastConnectionAttempt = new Date();
-
-    try {
-      logger.info('Connecting to HANA database...');
-      
-      const hanaConfig = config.getHanaConfig();
-      const dbType = config.getHanaDatabaseType();
-      
-      logger.info(`Detected HANA database type: ${dbType}`);
-      
-      // Pass the full config object so the client can access the methods
-      this.client = await createHanaClient(config);
-      
-      this.connectionRetries = 0;
-      this.lastConnectionError = null;
-      logger.info(`HANA client connected successfully to ${dbType} database`);
-      
-      return this.client;
-    } catch (error) {
-      this.connectionRetries++;
-      this.lastConnectionError = error;
-      logger.error(`Failed to connect to HANA (attempt ${this.connectionRetries}):`, redactSecrets(error.message));
-      
-      if (this.connectionRetries < this.maxRetries) {
-        logger.info(`Retrying connection in 2 seconds...`);
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        this.isConnecting = false;
-        return this.connect();
-      } else {
-        logger.error('Max connection retries reached');
-        this.isConnecting = false;
-        return null;
-      }
-    }
-  }
-
-  /**
-   * Test the connection
+   * Test the connection (runs SELECT 1 via the pool).
    */
   async testConnection() {
-    const client = await this.getClient();
-    if (!client) {
-      const detail = this.lastConnectionError ? this.lastConnectionError.message : 'No client available';
-      return { success: false, error: detail };
+    if (!config.isHanaConfigured()) {
+      return { success: false, error: 'HANA configuration is incomplete' };
     }
-
     try {
-      const testQuery = 'SELECT 1 as test_value FROM DUMMY';
-      const result = await client.query(testQuery);
-      
+      const result = await this.withConnection(async (client) => {
+        return client.query('SELECT 1 AS TEST_VALUE FROM DUMMY');
+      });
       if (result && result.length > 0) {
-        return { 
-          success: true, 
-          result: result[0].TEST_VALUE 
-        };
-      } else {
-        return { 
-          success: false, 
-          error: 'Connection test returned no results' 
-        };
+        return { success: true, result: result[0].TEST_VALUE };
       }
+      return { success: false, error: 'Connection test returned no results' };
     } catch (error) {
       logger.error('Connection test failed:', redactSecrets(error.message));
-      return { 
-        success: false, 
-        error: redactSecrets(error.message) 
-      };
+      return { success: false, error: redactSecrets(error.message) };
     }
   }
 
-  /**
-   * Check if connection is healthy
-   */
   async isHealthy() {
     const test = await this.testConnection();
     return test.success;
   }
 
   /**
-   * Disconnect from HANA database
+   * Drain all pool connections (called on shutdown).
    */
   async disconnect() {
-    if (this.client) {
-      try {
-        await this.client.disconnect();
-        logger.info('HANA client disconnected');
-      } catch (error) {
-        logger.error('Error disconnecting HANA client:', redactSecrets(error.message));
-      } finally {
-        this.client = null;
-        this.connectionRetries = 0;
-      }
+    if (this._pool) {
+      await this._pool.drain();
+      this._pool = null;
+      logger.info('Connection pool drained');
     }
   }
 
-  /**
-   * Reset connection (disconnect and reconnect)
-   */
   async resetConnection() {
-    logger.info('Resetting HANA connection...');
+    logger.info('Resetting connection pool...');
     await this.disconnect();
-    this.connectionRetries = 0;
-    return this.getClient();
+    return this.testConnection();
   }
 
-  /**
-   * Get connection status
-   */
   getStatus() {
     const dbType = config.getHanaDatabaseType();
-    
+    const stats = this._pool ? this._pool.getStats() : { poolSize: config.getPoolConfig().poolSize, totalSlots: 0, busySlots: 0, idleSlots: 0, queuedRequests: 0 };
     return {
-      connected: !!this.client,
-      isConnecting: this.isConnecting,
-      lastConnectionAttempt: this.lastConnectionAttempt,
-      connectionRetries: this.connectionRetries,
-      maxRetries: this.maxRetries,
-      databaseType: dbType
+      connected: this._pool !== null && stats.totalSlots > 0,
+      databaseType: dbType,
+      ...stats
     };
   }
 }
 
-// Create singleton instance
 const connectionManager = new ConnectionManager();
 
-module.exports = { ConnectionManager, connectionManager }; 
+module.exports = { ConnectionManager, connectionManager };

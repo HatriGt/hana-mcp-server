@@ -3,10 +3,12 @@
  */
 
 const { logger } = require('../utils/logger');
+const { config } = require('../utils/config');
 const { executeUserQuery } = require('../database/query-runner');
 const Validators = require('../utils/validators');
 const Formatters = require('../utils/formatters');
 const { redactSecrets } = require('../utils/sensitive-redact');
+const { writeAuditEntry } = require('../utils/audit-logger');
 const snapshotStore = require('../query-snapshot-store');
 
 class QueryTools {
@@ -23,7 +25,8 @@ class QueryTools {
       maxRows,
       limit,
       includeTotal,
-      include_total
+      include_total,
+      timeout_ms
     } = args || {};
 
     const validation = Validators.validateRequired(args, ['query'], 'hana_execute_query');
@@ -41,14 +44,23 @@ class QueryTools {
       return Formatters.createErrorResponse('Invalid parameters', paramValidation.error);
     }
 
-    const effectiveMax = maxRows != null ? maxRows : limit;
-    const wantTotal = includeTotal === true || include_total === true;
+    const limits = config.getQueryLimits();
+    const dmlCheck = Validators.validateDmlRestrictions(query, limits);
+    if (!dmlCheck.valid) {
+      return Formatters.createErrorResponse('Operation not permitted', dmlCheck.error);
+    }
 
+    const effectiveMax  = maxRows != null ? maxRows : limit;
+    const wantTotal     = includeTotal === true || include_total === true;
+    const timeoutMs     = timeout_ms != null ? Number(timeout_ms) : (limits.queryTimeoutMs || 0);
+
+    const t0 = Date.now();
     try {
       const runResult = await executeUserQuery(query, parameters, {
         offset,
         maxRows: effectiveMax,
-        includeTotal: wantTotal
+        includeTotal: wantTotal,
+        timeoutMs
       });
 
       let snapshotId;
@@ -56,9 +68,37 @@ class QueryTools {
         snapshotId = snapshotStore.createSnapshot({ query, parameters });
       }
 
+      writeAuditEntry({
+        tool: 'hana_execute_query',
+        queryPreview: query.slice(0, 200),
+        durationMs: Date.now() - t0,
+        rowCount: runResult.returnedRows,
+        error: false
+      });
+
       return Formatters.formatQueryToolResult(runResult, query, snapshotId);
     } catch (error) {
-      logger.error('Query execution failed:', error.message);
+      const durationMs = Date.now() - t0;
+      logger.error('Query execution failed:', redactSecrets(error.message));
+
+      writeAuditEntry({
+        tool: 'hana_execute_query',
+        queryPreview: query.slice(0, 200),
+        durationMs,
+        rowCount: null,
+        error: true,
+        sqlCode: error.sqlCode != null ? error.sqlCode : null,
+        sqlState: error.sqlState || null
+      });
+
+      if (error.sqlCode != null || error.sqlState != null) {
+        return Formatters.createStructuredErrorResponse(
+          'Query execution failed',
+          error.message,
+          error.sqlCode,
+          error.sqlState
+        );
+      }
       return Formatters.createErrorResponse('Query execution failed', error.message);
     }
   }
@@ -86,14 +126,17 @@ class QueryTools {
       );
     }
 
-    const offset = Math.max(0, Number(args.offset) || 0);
+    const offset  = Math.max(0, Number(args.offset) || 0);
     const maxRows = args.max_rows != null ? args.max_rows : undefined;
+    const limits  = config.getQueryLimits();
+    const timeoutMs = limits.queryTimeoutMs || 0;
 
     try {
       const runResult = await executeUserQuery(snap.query, snap.parameters, {
         offset,
         maxRows,
-        includeTotal: false
+        includeTotal: false,
+        timeoutMs
       });
 
       let snapshotId;
@@ -104,6 +147,14 @@ class QueryTools {
       return Formatters.formatQueryToolResult(runResult, snap.query, snapshotId);
     } catch (error) {
       logger.error('Paged query failed:', redactSecrets(error.message));
+      if (error.sqlCode != null || error.sqlState != null) {
+        return Formatters.createStructuredErrorResponse(
+          'Paged query failed',
+          error.message,
+          error.sqlCode,
+          error.sqlState
+        );
+      }
       return Formatters.createErrorResponse('Paged query failed', error.message);
     }
   }

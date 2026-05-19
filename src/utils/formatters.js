@@ -58,6 +58,28 @@ class Formatters {
   }
 
   /**
+   * Create a structured error response that includes sqlCode and sqlState for AI clients.
+   * @param {string} message
+   * @param {string} [details]
+   * @param {number|null} [sqlCode]
+   * @param {string|null} [sqlState]
+   */
+  static createStructuredErrorResponse(message, details = '', sqlCode = null, sqlState = null) {
+    const safeMsg = redactSecrets(message);
+    const safeDetails = details ? redactSecrets(String(details)) : '';
+    const text = safeDetails ? `${safeMsg}\n\n${safeDetails}` : safeMsg;
+    const structured = { message: safeMsg };
+    if (safeDetails) structured.details = safeDetails;
+    if (sqlCode != null) structured.sqlCode = sqlCode;
+    if (sqlState != null) structured.sqlState = sqlState;
+    return {
+      content: [{ type: 'text', text: `❌ ${text}` }],
+      structuredContent: structured,
+      isError: true
+    };
+  }
+
+  /**
    * Create a success response
    */
   static createSuccessResponse(message, details = '') {
@@ -296,9 +318,8 @@ class Formatters {
       columnsOmitted: runResult.columnsOmitted || 0,
       appliedWrap: runResult.appliedWrap
     };
-    if (snapshotId) {
-      structured.snapshotId = snapshotId;
-    }
+    if (runResult.elapsedMs != null) structured.elapsedMs = runResult.elapsedMs;
+    if (snapshotId) structured.snapshotId = snapshotId;
 
     let summary = `Query OK: ${runResult.returnedRows} row(s), columns=${runResult.columns.length}`;
     if (runResult.columnsOmitted > 0) {

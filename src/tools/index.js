@@ -10,6 +10,7 @@ const SchemaTools = require('./schema-tools');
 const TableTools = require('./table-tools');
 const IndexTools = require('./index-tools');
 const QueryTools = require('./query-tools');
+const DiscoveryTools = require('./discovery-tools');
 
 // Tool implementations mapping
 const TOOL_IMPLEMENTATIONS = {
@@ -23,7 +24,20 @@ const TOOL_IMPLEMENTATIONS = {
   hana_list_indexes: IndexTools.listIndexes,
   hana_describe_index: IndexTools.describeIndex,
   hana_execute_query: QueryTools.executeQuery,
-  hana_query_next_page: QueryTools.queryNextPage
+  hana_query_next_page: QueryTools.queryNextPage,
+  // Discovery tools (Tier 2)
+  hana_list_constraints:    DiscoveryTools.listConstraints,
+  hana_get_table_stats:     DiscoveryTools.getTableStats,
+  hana_list_views:          DiscoveryTools.listViews,
+  hana_describe_view:       DiscoveryTools.describeView,
+  hana_list_synonyms:       DiscoveryTools.listSynonyms,
+  hana_list_procedures:     DiscoveryTools.listProcedures,
+  hana_describe_procedure:  DiscoveryTools.describeProcedure,
+  hana_search_columns:      DiscoveryTools.searchColumns,
+  hana_get_sample_data:     DiscoveryTools.getSampleData,
+  hana_explain_plan:        DiscoveryTools.explainPlan,
+  hana_list_foreign_keys:   DiscoveryTools.listForeignKeys,
+  hana_list_privileges:     DiscoveryTools.listPrivileges
 };
 
 class ToolRegistry {

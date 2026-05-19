@@ -520,6 +520,177 @@ async function run() {
     }
   }
 
+  // ── Discovery tools (Tier 2) ─────────────────────────────────────────────
+
+  if (workSchema && workTable && !liveMetadataSkippable) {
+    logSection('hana_list_constraints');
+    try {
+      const res = await callTool('hana_list_constraints', {
+        schema_name: workSchema,
+        table_name: workTable
+      });
+      requireOk('hana_list_constraints', !isToolError(res), getText(res).slice(0, 80));
+    } catch (e) {
+      failures.push({ name: 'hana_list_constraints', detail: e.message });
+      logCase('hana_list_constraints', false, e.message);
+    }
+
+    logSection('hana_list_foreign_keys');
+    try {
+      const res = await callTool('hana_list_foreign_keys', {
+        schema_name: workSchema,
+        table_name: workTable
+      });
+      requireOk('hana_list_foreign_keys', !isToolError(res), getText(res).slice(0, 80));
+    } catch (e) {
+      failures.push({ name: 'hana_list_foreign_keys', detail: e.message });
+      logCase('hana_list_foreign_keys', false, e.message);
+    }
+
+    logSection('hana_get_table_stats');
+    try {
+      const res = await callTool('hana_get_table_stats', {
+        schema_name: workSchema,
+        table_name: workTable
+      });
+      requireOk('hana_get_table_stats', !isToolError(res), getText(res).slice(0, 80));
+    } catch (e) {
+      failures.push({ name: 'hana_get_table_stats', detail: e.message });
+      logCase('hana_get_table_stats', false, e.message);
+    }
+
+    logSection('hana_get_sample_data');
+    try {
+      const res = await callTool('hana_get_sample_data', {
+        schema_name: workSchema,
+        table_name: workTable,
+        row_count: 3
+      });
+      requireOk('hana_get_sample_data', !isToolError(res), getText(res).slice(0, 80));
+    } catch (e) {
+      failures.push({ name: 'hana_get_sample_data', detail: e.message });
+      logCase('hana_get_sample_data', false, e.message);
+    }
+
+    logSection('hana_search_columns');
+    try {
+      const colPattern = workTable.slice(0, 3) + '%';
+      const res = await callTool('hana_search_columns', {
+        column_pattern: colPattern,
+        schema_name: workSchema,
+        limit: 10
+      });
+      requireOk('hana_search_columns', !isToolError(res), `column_pattern=${colPattern} — ${getText(res).slice(0, 60)}`);
+    } catch (e) {
+      failures.push({ name: 'hana_search_columns', detail: e.message });
+      logCase('hana_search_columns', false, e.message);
+    }
+
+    logSection('hana_list_privileges');
+    try {
+      const res = await callTool('hana_list_privileges', {
+        schema_name: workSchema,
+        table_name: workTable
+      });
+      // Privilege query may be denied for non-admin users — treat as soft
+      if (isToolError(res)) {
+        logCase('hana_list_privileges', true, 'no privilege (expected for non-admin, skipped)');
+      } else {
+        requireOk('hana_list_privileges', true, getText(res).slice(0, 80));
+      }
+    } catch (e) {
+      failures.push({ name: 'hana_list_privileges', detail: e.message });
+      logCase('hana_list_privileges', false, e.message);
+    }
+  }
+
+  logSection('hana_list_views');
+  let liveView = null;
+  try {
+    const res = await callTool('hana_list_views', {
+      schema_name: workSchema || schemaFromEnv || 'SYS',
+      limit: 10
+    });
+    const sc = getStructured(res);
+    const items = sc?.items || [];
+    liveView = items[0] || null;
+    requireOk('hana_list_views', !isToolError(res), `found ${items.length} views${liveView ? `, sample: ${liveView}` : ''}`);
+  } catch (e) {
+    failures.push({ name: 'hana_list_views', detail: e.message });
+    logCase('hana_list_views', false, e.message);
+  }
+
+  if (liveView) {
+    logSection('hana_describe_view');
+    try {
+      const res = await callTool('hana_describe_view', {
+        schema_name: workSchema || schemaFromEnv || 'SYS',
+        view_name: liveView
+      });
+      requireOk('hana_describe_view', !isToolError(res), `view=${liveView}`);
+    } catch (e) {
+      failures.push({ name: 'hana_describe_view', detail: e.message });
+      logCase('hana_describe_view', false, e.message);
+    }
+  } else {
+    console.log('\n=== hana_describe_view ===\n  (skipped — no views found in schema)');
+  }
+
+  logSection('hana_list_synonyms');
+  try {
+    const res = await callTool('hana_list_synonyms', {
+      schema_name: workSchema || schemaFromEnv || 'SYS',
+      limit: 10
+    });
+    requireOk('hana_list_synonyms', !isToolError(res), getText(res).slice(0, 80));
+  } catch (e) {
+    failures.push({ name: 'hana_list_synonyms', detail: e.message });
+    logCase('hana_list_synonyms', false, e.message);
+  }
+
+  logSection('hana_list_procedures');
+  let liveProc = null;
+  try {
+    const res = await callTool('hana_list_procedures', {
+      schema_name: workSchema || schemaFromEnv || 'SYS',
+      limit: 10
+    });
+    const sc = getStructured(res);
+    const items = sc?.items || [];
+    liveProc = items[0] || null;
+    requireOk('hana_list_procedures', !isToolError(res), `found ${items.length} procedures`);
+  } catch (e) {
+    failures.push({ name: 'hana_list_procedures', detail: e.message });
+    logCase('hana_list_procedures', false, e.message);
+  }
+
+  if (liveProc) {
+    logSection('hana_describe_procedure');
+    try {
+      const res = await callTool('hana_describe_procedure', {
+        schema_name: workSchema || schemaFromEnv || 'SYS',
+        procedure_name: liveProc
+      });
+      requireOk('hana_describe_procedure', !isToolError(res), `proc=${liveProc}`);
+    } catch (e) {
+      failures.push({ name: 'hana_describe_procedure', detail: e.message });
+      logCase('hana_describe_procedure', false, e.message);
+    }
+  } else {
+    console.log('\n=== hana_describe_procedure ===\n  (skipped — no procedures found in schema)');
+  }
+
+  logSection('hana_explain_plan');
+  try {
+    const res = await callTool('hana_explain_plan', {
+      query: 'SELECT 1 AS X FROM DUMMY'
+    });
+    requireOk('hana_explain_plan', !isToolError(res), getText(res).slice(0, 80));
+  } catch (e) {
+    failures.push({ name: 'hana_explain_plan', detail: e.message });
+    logCase('hana_explain_plan', false, e.message);
+  }
+
   logSection('hana_execute_query (DUMMY)');
   try {
     const res = await callTool('hana_execute_query', { query: 'SELECT 1 AS X FROM DUMMY' });
@@ -704,6 +875,76 @@ async function run() {
         logCase('hana_execute_query DISTINCT', false, e.message);
       }
     }
+  }
+
+  // ── DML restrictions (blocked by default — no HANA_ALLOW_* env set) ─────────
+  logSection('DML restrictions (INSERT / UPDATE / DELETE / TRUNCATE blocked by default)');
+  for (const { op, query: dmlQuery } of [
+    { op: 'INSERT',   query: "INSERT INTO DUMMY VALUES('X')" },
+    { op: 'UPDATE',   query: "UPDATE DUMMY SET DUMMY='X' WHERE 1=0" },
+    { op: 'DELETE',   query: 'DELETE FROM DUMMY WHERE 1=0' },
+    { op: 'TRUNCATE', query: 'TRUNCATE TABLE DUMMY' }
+  ]) {
+    try {
+      const res = await callTool('hana_execute_query', { query: dmlQuery });
+      const text = getText(res);
+      const blocked = isToolError(res) && text.includes('not enabled');
+      requireOk(`DML blocked: ${op}`, blocked, blocked ? '' : `unexpected response: ${text.slice(0, 100)}`);
+    } catch (e) {
+      failures.push({ name: `DML blocked: ${op}`, detail: e.message });
+      logCase(`DML blocked: ${op}`, false, e.message);
+    }
+  }
+  try {
+    const res = await callTool('hana_execute_query', { query: 'SELECT 1 AS X FROM DUMMY' });
+    requireOk('DML blocked: SELECT still passes', !isToolError(res), getText(res).slice(0, 80));
+  } catch (e) {
+    failures.push({ name: 'DML blocked: SELECT still passes', detail: e.message });
+    logCase('DML blocked: SELECT still passes', false, e.message);
+  }
+
+  // ── Connection pool — concurrent queries all succeed ─────────────────────
+  logSection('connection pool (3 concurrent queries)');
+  try {
+    const concurrent = await Promise.all([
+      callTool('hana_execute_query', { query: 'SELECT 1 AS N FROM DUMMY' }),
+      callTool('hana_execute_query', { query: 'SELECT 2 AS N FROM DUMMY' }),
+      callTool('hana_execute_query', { query: 'SELECT 3 AS N FROM DUMMY' })
+    ]);
+    const passed = concurrent.filter((r) => !isToolError(r)).length;
+    requireOk('connection pool concurrent', passed === 3, `${passed}/3 succeeded`);
+  } catch (e) {
+    failures.push({ name: 'connection pool concurrent', detail: e.message });
+    logCase('connection pool concurrent', false, e.message);
+  }
+
+  // ── Snapshot ID emitted when result is truncated ──────────────────────────
+  logSection('snapshot ID emitted when result truncated (maxRows=1 on multi-row query)');
+  try {
+    const res = await callTool('hana_execute_query', {
+      query: multiRowDummySql,
+      maxRows: 1
+    });
+    const sc = getStructured(res);
+    const hasSnapshot = !isToolError(res) && sc?.truncated === true &&
+                        typeof sc?.snapshotId === 'string' && sc.snapshotId.length === 36;
+    if (hasSnapshot) {
+      requireOk('snapshot: snapshotId emitted', true, `snapshotId=${sc.snapshotId}`);
+      const res2 = await callTool('hana_query_next_page', {
+        snapshot_id: sc.snapshotId,
+        offset: sc.nextOffset
+      });
+      const sc2 = getStructured(res2);
+      requireOk('snapshot: next page returned', !isToolError(res2) && sc2?.kind === 'select',
+        `returnedRows=${sc2?.returnedRows}`);
+    } else if (!isToolError(res) && sc?.truncated === false) {
+      logCase('snapshot: snapshotId emitted', true, 'skipped — query returns ≤1 row so no truncation');
+    } else {
+      requireOk('snapshot: snapshotId emitted', false, `truncated=${sc?.truncated} snapshotId=${sc?.snapshotId}`);
+    }
+  } catch (e) {
+    failures.push({ name: 'snapshot: snapshotId emitted', detail: e.message });
+    logCase('snapshot: snapshotId emitted', false, e.message);
   }
 
   logSection('hana_query_next_page (invalid snapshot)');

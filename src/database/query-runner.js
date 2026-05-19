@@ -82,6 +82,70 @@ function shapeRows(rows, maxCols, maxCellChars, maxDataRows) {
  */
 async function executeUserQuery(query, parameters = [], args = {}) {
   const limits = config.getQueryLimits();
+  const timeoutMs = args.timeoutMs != null ? Number(args.timeoutMs) : (limits.queryTimeoutMs || 0);
+  const t0 = Date.now();
+
+  if (!limits.queryLimitsEnabled) {
+    const userMaxRows = args.maxRows != null ? Math.max(1, Number(args.maxRows)) : null;
+    const userOffset  = args.offset  != null ? Math.max(0, Number(args.offset))  : 0;
+    const wantTotal   = args.includeTotal === true;
+    const isSelect    = isSingleSelectableStatement(query);
+    const needsWrap   = isSelect && (userMaxRows != null || userOffset > 0);
+
+    let rawRows;
+    let totalRows = null;
+    let appliedWrap = false;
+
+    if (isSelect && wantTotal) {
+      const inner    = query.trim().replace(/;+\s*$/u, '').trim();
+      const countSql = `SELECT COUNT(*) AS "_HANA_MCP_CNT" FROM (${inner}) AS ${SUB_ALIAS}`;
+      try {
+        const cnt = await QueryExecutor.executeScalarQuery(countSql, parameters || [], timeoutMs);
+        totalRows = cnt != null ? Number(cnt) : null;
+      } catch (_) {}
+    }
+
+    if (needsWrap) {
+      const inner      = query.trim().replace(/;+\s*$/u, '').trim();
+      const fetchLimit = userMaxRows != null ? userMaxRows + 1 : 10001;
+      const wrapped    = `SELECT * FROM (${inner}) AS ${SUB_ALIAS} LIMIT ? OFFSET ?`;
+      rawRows     = await QueryExecutor.executeQuery(wrapped, [...(parameters || []), fetchLimit, userOffset], timeoutMs);
+      appliedWrap = true;
+    } else {
+      rawRows = await QueryExecutor.executeQuery(query, parameters || [], timeoutMs);
+    }
+
+    const columns  = rawRows.length > 0 ? Object.keys(rawRows[0]) : [];
+    const allRows  = rawRows.map((row) => {
+      const out = {};
+      for (const key of columns) {
+        const v = row[key];
+        if (v === null || v === undefined) { out[key] = v; continue; }
+        out[key] = typeof v === 'object' ? JSON.stringify(v) : String(v);
+      }
+      return out;
+    });
+
+    const dataRows  = userMaxRows != null ? allRows.slice(0, userMaxRows) : allRows;
+    const truncated = userMaxRows != null && allRows.length > userMaxRows;
+    const nextOffset = truncated ? userOffset + dataRows.length : null;
+
+    return {
+      kind: isSelect ? 'select' : 'other',
+      columns,
+      rows: dataRows,
+      truncated,
+      returnedRows: dataRows.length,
+      maxRows: userMaxRows,
+      offset: userOffset,
+      nextOffset,
+      totalRows,
+      columnsOmitted: 0,
+      appliedWrap,
+      elapsedMs: Date.now() - t0
+    };
+  }
+
   const maxRowsCap = limits.maxResultRows;
   const requestedMax = args.maxRows != null ? Number(args.maxRows) : maxRowsCap;
   const effectiveMax = Math.min(
@@ -106,14 +170,14 @@ async function executeUserQuery(query, parameters = [], args = {}) {
     if (args.includeTotal === true) {
       const countSql = `SELECT COUNT(*) AS "_HANA_MCP_CNT" FROM (${inner}) AS ${SUB_ALIAS}`;
       try {
-        const cnt = await QueryExecutor.executeScalarQuery(countSql, parameters || []);
+        const cnt = await QueryExecutor.executeScalarQuery(countSql, parameters || [], timeoutMs);
         totalRows = cnt != null ? Number(cnt) : null;
       } catch (e) {
         totalRows = null;
       }
     }
 
-    const rawRows = await QueryExecutor.executeQuery(wrapped, params);
+    const rawRows = await QueryExecutor.executeQuery(wrapped, params, timeoutMs);
     const shaped = shapeRows(rawRows, maxCols, maxCellChars, effectiveMax);
     const truncated = shaped.truncated;
     const nextOffset = truncated ? offset + shaped.dataRows.length : null;
@@ -129,11 +193,12 @@ async function executeUserQuery(query, parameters = [], args = {}) {
       nextOffset,
       totalRows,
       columnsOmitted: shaped.columnsOmitted || 0,
-      appliedWrap: true
+      appliedWrap: true,
+      elapsedMs: Date.now() - t0
     };
   }
 
-  let rawRows = await QueryExecutor.executeQuery(query, parameters || []);
+  let rawRows = await QueryExecutor.executeQuery(query, parameters || [], timeoutMs);
   if (rawRows.length > fetchLimit) {
     rawRows = rawRows.slice(0, fetchLimit);
   }
@@ -152,7 +217,8 @@ async function executeUserQuery(query, parameters = [], args = {}) {
     nextOffset,
     totalRows: null,
     columnsOmitted: shaped.columnsOmitted || 0,
-    appliedWrap: false
+    appliedWrap: false,
+    elapsedMs: Date.now() - t0
   };
 }
 
