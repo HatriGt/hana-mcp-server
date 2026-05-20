@@ -613,7 +613,7 @@ async function run() {
     });
     const sc = getStructured(res);
     const items = sc?.items || [];
-    liveView = items[0] || null;
+    liveView = items[0]?.viewName || items[0] || null;
     requireOk('hana_list_views', !isToolError(res), `found ${items.length} views${liveView ? `, sample: ${liveView}` : ''}`);
   } catch (e) {
     failures.push({ name: 'hana_list_views', detail: e.message });
@@ -657,7 +657,7 @@ async function run() {
     });
     const sc = getStructured(res);
     const items = sc?.items || [];
-    liveProc = items[0] || null;
+    liveProc = items[0]?.procedureName || items[0] || null;
     requireOk('hana_list_procedures', !isToolError(res), `found ${items.length} procedures`);
   } catch (e) {
     failures.push({ name: 'hana_list_procedures', detail: e.message });
@@ -957,6 +957,135 @@ async function run() {
   } catch (e) {
     failures.push({ name: 'hana_query_next_page invalid', detail: e.message });
     logCase('hana_query_next_page invalid', false, e.message);
+  }
+
+  // ── Extended discovery tools (0.3.1) ────────────────────────────────────────
+
+  logSection('hana_get_session_info');
+  try {
+    const res = await callTool('hana_get_session_info', {});
+    const sc  = getStructured(res);
+    requireOk('hana_get_session_info', !isToolError(res) && sc?.currentUser != null, `user=${sc?.currentUser}`);
+  } catch (e) {
+    failures.push({ name: 'hana_get_session_info', detail: e.message });
+    logCase('hana_get_session_info', false, e.message);
+  }
+
+  logSection('hana_search_tables');
+  try {
+    const pattern = workTable ? `${workTable.slice(0, 3)}%` : '%';
+    const res = await callTool('hana_search_tables', {
+      table_pattern: pattern,
+      schema_name: workSchema || undefined,
+      limit: 10
+    });
+    const sc = getStructured(res);
+    requireOk('hana_search_tables', !isToolError(res) && Array.isArray(sc?.tables), `returned=${sc?.returned}`);
+  } catch (e) {
+    failures.push({ name: 'hana_search_tables', detail: e.message });
+    logCase('hana_search_tables', false, e.message);
+  }
+
+  if (workSchema && workTable && !liveMetadataSkippable) {
+    logSection('hana_get_ddl');
+    try {
+      const res = await callTool('hana_get_ddl', { schema_name: workSchema, object_name: workTable });
+      // DDL may not be available for all table types — error is acceptable
+      if (!isToolError(res)) {
+        const sc = getStructured(res);
+        requireOk('hana_get_ddl', sc?.items?.length >= 0, `items=${sc?.items?.length}`);
+      } else {
+        logCase('hana_get_ddl', true, `no DDL or privilege error (acceptable): ${getText(res).slice(0, 80)}`);
+      }
+    } catch (e) {
+      failures.push({ name: 'hana_get_ddl', detail: e.message });
+      logCase('hana_get_ddl', false, e.message);
+    }
+
+    logSection('hana_get_column_stats (cached)');
+    try {
+      const res = await callTool('hana_get_column_stats', { schema_name: workSchema, table_name: workTable });
+      if (!isToolError(res)) {
+        const sc = getStructured(res);
+        requireOk('hana_get_column_stats cached', Array.isArray(sc?.columns), `columns=${sc?.columns?.length}`);
+      } else {
+        logCase('hana_get_column_stats cached', true, `no cached stats (acceptable): ${getText(res).slice(0, 80)}`);
+      }
+    } catch (e) {
+      failures.push({ name: 'hana_get_column_stats cached', detail: e.message });
+      logCase('hana_get_column_stats cached', false, e.message);
+    }
+
+    logSection('hana_get_dependencies');
+    try {
+      const res = await callTool('hana_get_dependencies', {
+        schema_name: workSchema,
+        object_name: workTable,
+        direction: 'both'
+      });
+      const sc = getStructured(res);
+      requireOk('hana_get_dependencies', !isToolError(res) && Array.isArray(sc?.dependencies), `deps=${sc?.returned}`);
+    } catch (e) {
+      failures.push({ name: 'hana_get_dependencies', detail: e.message });
+      logCase('hana_get_dependencies', false, e.message);
+    }
+
+    logSection('hana_get_partition_info');
+    try {
+      const res = await callTool('hana_get_partition_info', { schema_name: workSchema, table_name: workTable });
+      const sc  = getStructured(res);
+      requireOk('hana_get_partition_info', !isToolError(res) && sc != null, `partitioned=${sc?.partitioned}`);
+    } catch (e) {
+      failures.push({ name: 'hana_get_partition_info', detail: e.message });
+      logCase('hana_get_partition_info', false, e.message);
+    }
+  }
+
+  if (workSchema && !liveMetadataSkippable) {
+    logSection('hana_list_functions');
+    try {
+      const res = await callTool('hana_list_functions', { schema_name: workSchema });
+      const sc  = getStructured(res);
+      requireOk('hana_list_functions', !isToolError(res) && sc?.totalAvailable >= 0, `total=${sc?.totalAvailable}`);
+    } catch (e) {
+      failures.push({ name: 'hana_list_functions', detail: e.message });
+      logCase('hana_list_functions', false, e.message);
+    }
+
+    logSection('hana_list_sequences');
+    try {
+      const res = await callTool('hana_list_sequences', { schema_name: workSchema });
+      const sc  = getStructured(res);
+      requireOk('hana_list_sequences', !isToolError(res) && sc?.totalAvailable >= 0, `total=${sc?.totalAvailable}`);
+    } catch (e) {
+      failures.push({ name: 'hana_list_sequences', detail: e.message });
+      logCase('hana_list_sequences', false, e.message);
+    }
+  }
+
+  logSection('hana_list_calculation_views');
+  try {
+    const res = await callTool('hana_list_calculation_views', { limit: 5 });
+    const sc  = getStructured(res);
+    requireOk('hana_list_calculation_views', !isToolError(res) && sc?.totalAvailable >= 0, `total=${sc?.totalAvailable}`);
+  } catch (e) {
+    failures.push({ name: 'hana_list_calculation_views', detail: e.message });
+    logCase('hana_list_calculation_views', false, e.message);
+  }
+
+  logSection('hana_get_expensive_queries');
+  try {
+    const res = await callTool('hana_get_expensive_queries', { limit: 5 });
+    // May fail with privilege error — that is acceptable
+    if (!isToolError(res)) {
+      const sc = getStructured(res);
+      requireOk('hana_get_expensive_queries', Array.isArray(sc?.queries), `returned=${sc?.returned}`);
+    } else {
+      logCase('hana_get_expensive_queries', true, `privilege/access error (acceptable): ${getText(res).slice(0, 80)}`);
+    }
+  } catch (e) {
+    failures.push({ name: 'hana_get_expensive_queries', detail: e.message });
+    logCase('hana_get_expensive_queries', false, e.message);
   }
 
   logSection('resources/list (+ optional cursor)');

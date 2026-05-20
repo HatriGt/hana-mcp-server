@@ -182,7 +182,7 @@ class QueryExecutor {
   static async getViewsPage(schemaName, prefix, limit, offset) {
     const like = prefix && String(prefix).trim() ? `${String(prefix).trim()}%` : '%';
     const countSql = `SELECT COUNT(*) AS C FROM SYS.VIEWS WHERE SCHEMA_NAME = ? AND VIEW_NAME LIKE ?`;
-    const listSql  = `SELECT VIEW_NAME, HAS_PARAMETERS, READ_ONLY FROM SYS.VIEWS
+    const listSql  = `SELECT VIEW_NAME, HAS_PARAMETERS, IS_READ_ONLY AS READ_ONLY FROM SYS.VIEWS
                       WHERE SCHEMA_NAME = ? AND VIEW_NAME LIKE ? ORDER BY VIEW_NAME LIMIT ? OFFSET ?`;
     const totalRow = await this.executeScalarQuery(countSql, [schemaName, like]);
     const total    = totalRow != null ? Number(totalRow) : 0;
@@ -193,7 +193,7 @@ class QueryExecutor {
   static async getViewDefinition(schemaName, viewName, catalogDatabase) {
     const sys = this._sysCatalogRef(catalogDatabase);
     const rows = await this.executeQuery(
-      `SELECT VIEW_NAME, DEFINITION, HAS_PARAMETERS, READ_ONLY, CREATE_TIME
+      `SELECT VIEW_NAME, DEFINITION, HAS_PARAMETERS, IS_READ_ONLY AS READ_ONLY, CREATE_TIME
        FROM ${sys}.VIEWS WHERE SCHEMA_NAME = ? AND VIEW_NAME = ?`,
       [schemaName, viewName]
     );
@@ -229,7 +229,7 @@ class QueryExecutor {
     const like = prefix && String(prefix).trim() ? `${String(prefix).trim()}%` : '%';
     const countSql = `SELECT COUNT(*) AS C FROM SYS.PROCEDURES WHERE SCHEMA_NAME = ? AND PROCEDURE_NAME LIKE ?`;
     const listSql  = `SELECT PROCEDURE_NAME, INPUT_PARAMETER_COUNT, OUTPUT_PARAMETER_COUNT,
-                             INOUT_PARAMETER_COUNT, HAS_RESULT_SET, CREATE_TIME
+                             INOUT_PARAMETER_COUNT, RESULT_SET_COUNT, CREATE_TIME
                       FROM SYS.PROCEDURES WHERE SCHEMA_NAME = ? AND PROCEDURE_NAME LIKE ?
                       ORDER BY PROCEDURE_NAME LIMIT ? OFFSET ?`;
     const totalRow = await this.executeScalarQuery(countSql, [schemaName, like]);
@@ -316,6 +316,216 @@ class QueryExecutor {
       }
       return planRows || [];
     });
+  }
+
+  // ─── DDL ──────────────────────────────────────────────────────────────────
+
+  static async getObjectDDL(schemaName, objectName, objectType = null) {
+    const params = [schemaName, objectName];
+    let sql = `SELECT SCHEMA_NAME, OBJECT_NAME, OBJECT_TYPE, DEFINITION
+               FROM SYS.OBJECT_DEFINITION
+               WHERE SCHEMA_NAME = ? AND OBJECT_NAME = ?`;
+    if (objectType) {
+      sql += ` AND OBJECT_TYPE = ?`;
+      params.push(objectType.toUpperCase());
+    }
+    sql += ` ORDER BY OBJECT_TYPE`;
+    return this.executeQuery(sql, params);
+  }
+
+  // ─── Column statistics ─────────────────────────────────────────────────────
+
+  static async getColumnStatistics(schemaName, tableName, columnName = null) {
+    if (columnName) {
+      return this.executeQuery(
+        `SELECT COLUMN_NAME, DISTINCT_COUNT, NULL_COUNT, MIN_VALUE, MAX_VALUE, LAST_REFRESH_TIME
+         FROM SYS.COLUMN_STATISTICS WHERE SCHEMA_NAME = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+        [schemaName, tableName, columnName]
+      );
+    }
+    return this.executeQuery(
+      `SELECT COLUMN_NAME, DISTINCT_COUNT, NULL_COUNT, MIN_VALUE, MAX_VALUE, LAST_REFRESH_TIME
+       FROM SYS.COLUMN_STATISTICS WHERE SCHEMA_NAME = ? AND TABLE_NAME = ?
+       ORDER BY COLUMN_NAME`,
+      [schemaName, tableName]
+    );
+  }
+
+  static async getColumnStatisticsLive(schemaName, tableName, columnName) {
+    const [totalRows, statsRows] = await Promise.all([
+      this.getTableRowCount(schemaName, tableName),
+      this.executeQuery(
+        `SELECT COUNT("${columnName}") AS NON_NULL_COUNT,
+                COUNT(DISTINCT "${columnName}") AS DISTINCT_COUNT,
+                MIN(TO_NVARCHAR("${columnName}")) AS MIN_VALUE,
+                MAX(TO_NVARCHAR("${columnName}")) AS MAX_VALUE
+         FROM "${schemaName}"."${tableName}"`
+      )
+    ]);
+    const s        = statsRows.length > 0 ? statsRows[0] : {};
+    const total    = totalRows   != null ? Number(totalRows)           : null;
+    const nonNull  = s.NON_NULL_COUNT  != null ? Number(s.NON_NULL_COUNT) : null;
+    return {
+      totalRows:     total,
+      nonNullCount:  nonNull,
+      nullCount:     total != null && nonNull != null ? total - nonNull : null,
+      distinctCount: s.DISTINCT_COUNT != null ? Number(s.DISTINCT_COUNT) : null,
+      minValue:      s.MIN_VALUE != null ? String(s.MIN_VALUE) : null,
+      maxValue:      s.MAX_VALUE != null ? String(s.MAX_VALUE) : null,
+      nullPercent:   total != null && total > 0 && nonNull != null
+        ? (((total - nonNull) / total) * 100).toFixed(2)
+        : null
+    };
+  }
+
+  // ─── Functions ─────────────────────────────────────────────────────────────
+
+  static async getFunctionsPage(schemaName, prefix, limit, offset) {
+    const like = prefix && String(prefix).trim() ? `${String(prefix).trim()}%` : '%';
+    const countSql = `SELECT COUNT(*) AS C FROM SYS.FUNCTIONS WHERE SCHEMA_NAME = ? AND FUNCTION_NAME LIKE ?`;
+    const listSql  = `SELECT FUNCTION_NAME, FUNCTION_TYPE, INPUT_PARAMETER_COUNT, CREATE_TIME
+                      FROM SYS.FUNCTIONS WHERE SCHEMA_NAME = ? AND FUNCTION_NAME LIKE ?
+                      ORDER BY FUNCTION_NAME LIMIT ? OFFSET ?`;
+    const totalRow = await this.executeScalarQuery(countSql, [schemaName, like]);
+    const total    = totalRow != null ? Number(totalRow) : 0;
+    const results  = await this.executeQuery(listSql, [schemaName, like, limit, offset]);
+    return { rows: results, total };
+  }
+
+  static async getFunctionParameters(schemaName, functionName, catalogDatabase) {
+    const sys = this._sysCatalogRef(catalogDatabase);
+    return this.executeQuery(
+      `SELECT PARAMETER_NAME, DATA_TYPE_NAME, LENGTH, SCALE, PARAMETER_TYPE, POSITION
+       FROM ${sys}.FUNCTION_PARAMETERS
+       WHERE SCHEMA_NAME = ? AND FUNCTION_NAME = ?
+       ORDER BY POSITION`,
+      [schemaName, functionName]
+    );
+  }
+
+  // ─── Calculation views (_SYS_BIC) ──────────────────────────────────────────
+
+  static async getCalculationViewsPage(prefix, limit, offset) {
+    const like = prefix && String(prefix).trim() ? `${String(prefix).trim()}%` : '%';
+    const countSql = `SELECT COUNT(*) AS C FROM SYS.VIEWS WHERE SCHEMA_NAME = '_SYS_BIC' AND VIEW_NAME LIKE ?`;
+    const listSql  = `SELECT VIEW_NAME, HAS_PARAMETERS, IS_READ_ONLY AS READ_ONLY, CREATE_TIME
+                      FROM SYS.VIEWS WHERE SCHEMA_NAME = '_SYS_BIC' AND VIEW_NAME LIKE ?
+                      ORDER BY VIEW_NAME LIMIT ? OFFSET ?`;
+    const totalRow = await this.executeScalarQuery(countSql, [like]);
+    const total    = totalRow != null ? Number(totalRow) : 0;
+    const results  = await this.executeQuery(listSql, [like, limit, offset]);
+    return { rows: results, total };
+  }
+
+  // ─── Session info ──────────────────────────────────────────────────────────
+
+  static async getSessionInfo() {
+    const [sessionRows, dbRows] = await Promise.all([
+      this.executeQuery(`SELECT CURRENT_USER AS CU, CURRENT_SCHEMA AS CS FROM DUMMY`),
+      this.executeQuery(`SELECT DATABASE_NAME, SYSTEM_ID, VERSION FROM M_DATABASE LIMIT 1`).catch(() => [])
+    ]);
+    const s  = sessionRows.length > 0 ? sessionRows[0] : {};
+    const db = dbRows.length > 0 ? dbRows[0] : {};
+    return {
+      currentUser:   s.CU            || null,
+      currentSchema: s.CS            || null,
+      databaseName:  db.DATABASE_NAME || null,
+      systemId:      db.SYSTEM_ID     || null,
+      version:       db.VERSION       || null
+    };
+  }
+
+  // ─── Cross-schema table search ─────────────────────────────────────────────
+
+  static async searchTables(tablePattern, schemaName, limit) {
+    if (schemaName) {
+      return this.executeQuery(
+        `SELECT SCHEMA_NAME, TABLE_NAME, TABLE_TYPE
+         FROM SYS.TABLES WHERE TABLE_NAME LIKE ? AND SCHEMA_NAME = ?
+         ORDER BY SCHEMA_NAME, TABLE_NAME LIMIT ?`,
+        [tablePattern, schemaName, limit]
+      );
+    }
+    return this.executeQuery(
+      `SELECT SCHEMA_NAME, TABLE_NAME, TABLE_TYPE
+       FROM SYS.TABLES WHERE TABLE_NAME LIKE ?
+       ORDER BY SCHEMA_NAME, TABLE_NAME LIMIT ?`,
+      [tablePattern, limit]
+    );
+  }
+
+  // ─── Expensive queries ─────────────────────────────────────────────────────
+
+  static async getExpensiveQueries(limit = 20) {
+    return this.executeQuery(
+      `SELECT STATEMENT_HASH, DB_USER, APPLICATION_NAME, START_TIME,
+              DURATION_MICROSEC, CPU_TIME, LOCK_WAIT_DURATION, RECORDS,
+              SUBSTRING(STATEMENT_STRING, 1, 500) AS STATEMENT_PREVIEW
+       FROM M_EXPENSIVE_STATEMENTS
+       ORDER BY DURATION_MICROSEC DESC LIMIT ?`,
+      [limit]
+    );
+  }
+
+  // ─── Object dependencies ───────────────────────────────────────────────────
+
+  static async getObjectDependencies(schemaName, objectName, direction = 'both') {
+    if (direction === 'base') {
+      return this.executeQuery(
+        `SELECT BASE_SCHEMA_NAME, BASE_OBJECT_NAME, BASE_OBJECT_TYPE,
+                DEPENDENT_SCHEMA_NAME, DEPENDENT_OBJECT_NAME, DEPENDENT_OBJECT_TYPE
+         FROM SYS.OBJECT_DEPENDENCIES
+         WHERE BASE_SCHEMA_NAME = ? AND BASE_OBJECT_NAME = ?
+         ORDER BY DEPENDENT_OBJECT_TYPE, DEPENDENT_OBJECT_NAME LIMIT 200`,
+        [schemaName, objectName]
+      );
+    }
+    if (direction === 'dependent') {
+      return this.executeQuery(
+        `SELECT BASE_SCHEMA_NAME, BASE_OBJECT_NAME, BASE_OBJECT_TYPE,
+                DEPENDENT_SCHEMA_NAME, DEPENDENT_OBJECT_NAME, DEPENDENT_OBJECT_TYPE
+         FROM SYS.OBJECT_DEPENDENCIES
+         WHERE DEPENDENT_SCHEMA_NAME = ? AND DEPENDENT_OBJECT_NAME = ?
+         ORDER BY BASE_OBJECT_TYPE, BASE_OBJECT_NAME LIMIT 200`,
+        [schemaName, objectName]
+      );
+    }
+    return this.executeQuery(
+      `SELECT BASE_SCHEMA_NAME, BASE_OBJECT_NAME, BASE_OBJECT_TYPE,
+              DEPENDENT_SCHEMA_NAME, DEPENDENT_OBJECT_NAME, DEPENDENT_OBJECT_TYPE
+       FROM SYS.OBJECT_DEPENDENCIES
+       WHERE (BASE_SCHEMA_NAME = ? AND BASE_OBJECT_NAME = ?)
+          OR (DEPENDENT_SCHEMA_NAME = ? AND DEPENDENT_OBJECT_NAME = ?)
+       ORDER BY BASE_OBJECT_TYPE, BASE_OBJECT_NAME LIMIT 200`,
+      [schemaName, objectName, schemaName, objectName]
+    );
+  }
+
+  // ─── Table partition info ──────────────────────────────────────────────────
+
+  static async getPartitionInfo(schemaName, tableName) {
+    return this.executeQuery(
+      `SELECT PART_ID, PART_NAME, LEVEL_1_PARTITION, LEVEL_2_PARTITION, LEVEL_3_PARTITION, LOAD_UNIT
+       FROM SYS.TABLE_PARTITIONS
+       WHERE SCHEMA_NAME = ? AND TABLE_NAME = ?
+       ORDER BY PART_ID`,
+      [schemaName, tableName]
+    );
+  }
+
+  // ─── Sequences ─────────────────────────────────────────────────────────────
+
+  static async getSequencesPage(schemaName, prefix, limit, offset) {
+    const like = prefix && String(prefix).trim() ? `${String(prefix).trim()}%` : '%';
+    const countSql = `SELECT COUNT(*) AS C FROM SYS.SEQUENCES WHERE SCHEMA_NAME = ? AND SEQUENCE_NAME LIKE ?`;
+    const listSql  = `SELECT SEQUENCE_NAME, START_NUMBER, MIN_VALUE, MAX_VALUE, INCREMENT_BY,
+                             IS_CYCLED, CACHE_SIZE, CREATE_TIME
+                      FROM SYS.SEQUENCES WHERE SCHEMA_NAME = ? AND SEQUENCE_NAME LIKE ?
+                      ORDER BY SEQUENCE_NAME LIMIT ? OFFSET ?`;
+    const totalRow = await this.executeScalarQuery(countSql, [schemaName, like]);
+    const total    = totalRow != null ? Number(totalRow) : 0;
+    const results  = await this.executeQuery(listSql, [schemaName, like, limit, offset]);
+    return { rows: results, total };
   }
 
   // ─── Database info (existing, kept) ───────────────────────────────────────

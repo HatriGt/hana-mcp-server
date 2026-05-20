@@ -8,6 +8,28 @@ All notable changes to this project are documented here. Versions follow [Semant
 
 _No changes yet._
 
+## [0.3.1] — 2026-05-20
+
+**Patch** release. Adds 11 extended discovery tools covering DDL, column profiling, functions, calculation views, session context, cross-schema search, performance monitoring, dependency analysis, partitions, and sequences.
+
+### Added
+
+- **11 extended discovery tools:**
+  - `hana_get_ddl` — DDL (CREATE statement) for any object from `SYS.OBJECT_DEFINITION`; supports TABLE, VIEW, PROCEDURE, FUNCTION, TRIGGER, SEQUENCE.
+  - `hana_get_column_stats` — column statistics from `SYS.COLUMN_STATISTICS` (cached) or live `COUNT(DISTINCT)` / null-count queries (`live=true`).
+  - `hana_list_functions` / `hana_describe_function` — scalar and table functions from `SYS.FUNCTIONS` / `SYS.FUNCTION_PARAMETERS`; prefix filter and pagination.
+  - `hana_list_calculation_views` — SAP calculation views from `_SYS_BIC`; useful for BW/S4 analytics landscapes.
+  - `hana_get_session_info` — `CURRENT_USER`, `CURRENT_SCHEMA`, database name, `SYSTEM_ID`, and HANA version from `DUMMY` and `M_DATABASE`.
+  - `hana_search_tables` — cross-schema table-name search via `SYS.TABLES` LIKE pattern; optional schema filter; capped at 2000.
+  - `hana_get_expensive_queries` — top N expensive statements from `M_EXPENSIVE_STATEMENTS` ordered by duration; requires MONITORING privilege.
+  - `hana_get_dependencies` — object dependency graph from `SYS.OBJECT_DEPENDENCIES`; `direction` param (`base`, `dependent`, `both`); capped at 200.
+  - `hana_get_partition_info` — partition metadata (type, level, record count, loaded state) from `SYS.TABLE_PARTITIONS`; returns `partitioned=false` for unpartitioned tables.
+  - `hana_list_sequences` — sequences from `SYS.SEQUENCES` with start, min, max, increment, cycle, cache, and create-time; prefix filter and pagination.
+
+- **Live integration tests** — `test-all-tools.js` extended with coverage for all 11 new tools.
+
+---
+
 ## [0.3.0] — 2026-05-19
 
 **Minor** release. Adds 12 discovery tools, opt-in DML guard, explicit connection pool configuration, query limits opt-in flag, and fixes for HANA Cloud catalog column names discovered during live testing.

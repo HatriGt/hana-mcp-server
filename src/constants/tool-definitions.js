@@ -575,6 +575,170 @@ const TOOLS = [
       },
       required: []
     }
+  },
+
+  // ─── Extended discovery tools (0.3.1) ─────────────────────────────────────
+
+  {
+    name: 'hana_get_ddl',
+    title: 'Get object DDL definition',
+    description: 'Retrieve the DDL (CREATE statement) for a TABLE, VIEW, PROCEDURE, FUNCTION, TRIGGER, or SEQUENCE from SYS.OBJECT_DEFINITION. Requires appropriate privileges.',
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        schema_name:  { type: 'string', description: 'Schema name (defaults to HANA_SCHEMA)' },
+        object_name:  { type: 'string', description: 'Object name' },
+        object_type:  { type: 'string', description: 'Optional filter: TABLE, VIEW, PROCEDURE, FUNCTION, TRIGGER, SEQUENCE' }
+      },
+      required: ['object_name']
+    }
+  },
+  {
+    name: 'hana_get_column_stats',
+    title: 'Get column statistics',
+    description: 'Retrieve column statistics (distinct count, null count, min/max) from SYS.COLUMN_STATISTICS (cached) or via live COUNT queries (live=true). With live=true a specific column_name is required.',
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        schema_name:  { type: 'string', description: 'Schema name (defaults to HANA_SCHEMA)' },
+        table_name:   { type: 'string', description: 'Table name' },
+        column_name:  { type: 'string', description: 'Optional: single column to inspect. Required when live=true.' },
+        live:         { type: 'boolean', description: 'If true, run live COUNT(*)/COUNT(DISTINCT) queries instead of reading SYS.COLUMN_STATISTICS.' }
+      },
+      required: ['table_name']
+    }
+  },
+  {
+    name: 'hana_list_functions',
+    title: 'List functions in a schema',
+    description: 'List scalar and table functions from SYS.FUNCTIONS. Supports prefix filter and pagination.',
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        schema_name: { type: 'string', description: 'Schema name (defaults to HANA_SCHEMA)' },
+        prefix:      { type: 'string', description: 'Filter function names by prefix' },
+        limit:       { type: 'number' },
+        offset:      { type: 'number' }
+      },
+      required: []
+    }
+  },
+  {
+    name: 'hana_describe_function',
+    title: 'Describe a function',
+    description: 'Return parameter names, types, data types, and positions for a function from SYS.FUNCTION_PARAMETERS.',
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        schema_name:      { type: 'string', description: 'Schema name (defaults to HANA_SCHEMA)' },
+        function_name:    { type: 'string', description: 'Function name' },
+        catalog_database: { type: 'string', description: 'MDC catalog database for SYS.*' }
+      },
+      required: ['function_name']
+    }
+  },
+  {
+    name: 'hana_list_calculation_views',
+    title: 'List SAP calculation views',
+    description: 'List calculation views from the _SYS_BIC schema (SAP BW/S4 analytical views). Supports prefix filter and pagination.',
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prefix: { type: 'string', description: 'Filter view names by prefix' },
+        limit:  { type: 'number' },
+        offset: { type: 'number' }
+      },
+      required: []
+    }
+  },
+  {
+    name: 'hana_get_session_info',
+    title: 'Get current session info',
+    description: 'Return CURRENT_USER, CURRENT_SCHEMA, connected database name, SYSTEM_ID, and HANA version from DUMMY and M_DATABASE.',
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    inputSchema: {
+      type: 'object',
+      properties: {},
+      required: []
+    }
+  },
+  {
+    name: 'hana_search_tables',
+    title: 'Search tables by name pattern',
+    description: 'Find all tables matching a LIKE pattern across all schemas (or within a specific schema). Uses SYS.TABLES. Results capped at 2000.',
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        table_pattern: { type: 'string', description: 'LIKE pattern (e.g. %ORDERS%, BKPF)' },
+        schema_name:   { type: 'string', description: 'Optional schema filter' },
+        limit:         { type: 'number', description: 'Max results (hard cap 2000)' }
+      },
+      required: ['table_pattern']
+    }
+  },
+  {
+    name: 'hana_get_expensive_queries',
+    title: 'Get top expensive queries',
+    description: 'Return the most expensive statements from M_EXPENSIVE_STATEMENTS ordered by duration. Requires MONITORING privilege.',
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: false },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        limit: { type: 'number', description: 'Number of statements to return (default 20, max 100)' }
+      },
+      required: []
+    }
+  },
+  {
+    name: 'hana_get_dependencies',
+    title: 'Get object dependencies',
+    description: 'Show what an object depends on or what depends on it, from SYS.OBJECT_DEPENDENCIES. Capped at 200 rows.',
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        schema_name:  { type: 'string', description: 'Schema name (defaults to HANA_SCHEMA)' },
+        object_name:  { type: 'string', description: 'Object name' },
+        direction:    { type: 'string', description: 'base (what this depends on), dependent (what depends on this), both (default)' }
+      },
+      required: ['object_name']
+    }
+  },
+  {
+    name: 'hana_get_partition_info',
+    title: 'Get table partition info',
+    description: 'Return partition metadata (type, level, record count, loaded state) from SYS.TABLE_PARTITIONS. Returns empty result for unpartitioned tables.',
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        schema_name: { type: 'string', description: 'Schema name (defaults to HANA_SCHEMA)' },
+        table_name:  { type: 'string', description: 'Table name' }
+      },
+      required: ['table_name']
+    }
+  },
+  {
+    name: 'hana_list_sequences',
+    title: 'List sequences in a schema',
+    description: 'List sequences from SYS.SEQUENCES, showing start, min, max, increment, cycle, and cache settings.',
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        schema_name: { type: 'string', description: 'Schema name (defaults to HANA_SCHEMA)' },
+        prefix:      { type: 'string', description: 'Filter sequence names by prefix' },
+        limit:       { type: 'number' },
+        offset:      { type: 'number' }
+      },
+      required: []
+    }
   }
 ];
 
@@ -589,7 +753,11 @@ const TOOL_CATEGORIES = {
     'hana_list_constraints', 'hana_get_table_stats', 'hana_list_views', 'hana_describe_view',
     'hana_list_synonyms', 'hana_list_procedures', 'hana_describe_procedure',
     'hana_search_columns', 'hana_get_sample_data', 'hana_explain_plan',
-    'hana_list_foreign_keys', 'hana_list_privileges'
+    'hana_list_foreign_keys', 'hana_list_privileges',
+    'hana_get_ddl', 'hana_get_column_stats', 'hana_list_functions', 'hana_describe_function',
+    'hana_list_calculation_views', 'hana_get_session_info', 'hana_search_tables',
+    'hana_get_expensive_queries', 'hana_get_dependencies', 'hana_get_partition_info',
+    'hana_list_sequences'
   ]
 };
 
