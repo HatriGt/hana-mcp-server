@@ -179,7 +179,8 @@ Further notes: [ENVIRONMENT.md §9](docs/ENVIRONMENT.md#9-security-notes).
 |------|-------------------|
 | **Schema** | Paged schema/table lists, column metadata, connectivity checks |
 | **SQL** | Parameterized execution; optional row/column/cell caps; paging via `maxRows`/`offset`/`includeTotal`; continuation via `hana_query_next_page` |
-| **Discovery** | `hana_list_constraints`, `hana_list_foreign_keys`, `hana_get_table_stats`, `hana_get_sample_data`, `hana_search_columns`, `hana_list_views`, `hana_describe_view`, `hana_list_synonyms`, `hana_list_procedures`, `hana_describe_procedure`, `hana_explain_plan`, `hana_list_privileges` |
+| **Discovery (core)** | `hana_list_constraints`, `hana_list_foreign_keys`, `hana_get_table_stats`, `hana_get_sample_data`, `hana_search_columns`, `hana_list_views`, `hana_describe_view`, `hana_list_synonyms`, `hana_list_procedures`, `hana_describe_procedure`, `hana_explain_plan`, `hana_list_privileges` |
+| **Discovery (extended)** | `hana_get_ddl`, `hana_get_column_stats`, `hana_list_functions`, `hana_describe_function`, `hana_list_calculation_views`, `hana_get_session_info`, `hana_search_tables`, `hana_get_expensive_queries`, `hana_get_dependencies`, `hana_get_partition_info`, `hana_list_sequences` |
 | **DML guard** | INSERT / UPDATE / DELETE / TRUNCATE blocked by default; opt-in per operation via `HANA_ALLOW_*` |
 | **Resources** | `hana:///` URIs for list/read; large payloads flagged with `truncated` metadata |
 | **Domain knowledge (optional)** | JSON overlay for **`hana_explain_table`** — [configuration-samples.md](docs/configuration-samples.md) |

@@ -25,7 +25,7 @@ const TOOL_IMPLEMENTATIONS = {
   hana_describe_index: IndexTools.describeIndex,
   hana_execute_query: QueryTools.executeQuery,
   hana_query_next_page: QueryTools.queryNextPage,
-  // Discovery tools (Tier 2)
+  // Discovery tools (Tier 2 — 0.3.0)
   hana_list_constraints:    DiscoveryTools.listConstraints,
   hana_get_table_stats:     DiscoveryTools.getTableStats,
   hana_list_views:          DiscoveryTools.listViews,
@@ -37,7 +37,19 @@ const TOOL_IMPLEMENTATIONS = {
   hana_get_sample_data:     DiscoveryTools.getSampleData,
   hana_explain_plan:        DiscoveryTools.explainPlan,
   hana_list_foreign_keys:   DiscoveryTools.listForeignKeys,
-  hana_list_privileges:     DiscoveryTools.listPrivileges
+  hana_list_privileges:     DiscoveryTools.listPrivileges,
+  // Extended discovery tools (0.3.1)
+  hana_get_ddl:                  DiscoveryTools.getDDL,
+  hana_get_column_stats:         DiscoveryTools.getColumnStats,
+  hana_list_functions:           DiscoveryTools.listFunctions,
+  hana_describe_function:        DiscoveryTools.describeFunction,
+  hana_list_calculation_views:   DiscoveryTools.listCalculationViews,
+  hana_get_session_info:         DiscoveryTools.getSessionInfo,
+  hana_search_tables:            DiscoveryTools.searchTables,
+  hana_get_expensive_queries:    DiscoveryTools.getExpensiveQueries,
+  hana_get_dependencies:         DiscoveryTools.getDependencies,
+  hana_get_partition_info:       DiscoveryTools.getPartitionInfo,
+  hana_list_sequences:           DiscoveryTools.listSequences
 };
 
 class ToolRegistry {

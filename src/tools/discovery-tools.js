@@ -265,7 +265,7 @@ class DiscoveryTools {
         inputParams:   r.INPUT_PARAMETER_COUNT,
         outputParams:  r.OUTPUT_PARAMETER_COUNT,
         inoutParams:   r.INOUT_PARAMETER_COUNT,
-        hasResultSet:  r.HAS_RESULT_SET === 'TRUE',
+        hasResultSet:  r.RESULT_SET_COUNT != null ? Number(r.RESULT_SET_COUNT) > 0 : false,
         createTime:    r.CREATE_TIME ? String(r.CREATE_TIME) : null
       }));
       const structured = { items, returned: items.length, totalAvailable: total, truncated, nextOffset: truncated ? nextOffset : null };
@@ -524,6 +524,411 @@ class DiscoveryTools {
         err.sqlCode,
         err.sqlState
       );
+    }
+  }
+  // ── hana_get_ddl ─────────────────────────────────────────────────────────
+
+  static async getDDL(args) {
+    logger.tool('hana_get_ddl', args);
+    const schema_name = _schema(args);
+    const { object_name, object_type } = args || {};
+
+    if (!schema_name)  return Formatters.createErrorResponse('Schema name is required', 'Provide schema_name or set HANA_SCHEMA.');
+    if (!object_name)  return Formatters.createErrorResponse('object_name is required');
+
+    const sv = Validators.validateSchemaName(schema_name);
+    if (!sv.valid) return Formatters.createErrorResponse('Invalid schema name', sv.error);
+    const ov = Validators.validateTableName(object_name);
+    if (!ov.valid) return Formatters.createErrorResponse('Invalid object name', ov.error);
+
+    const validTypes = ['TABLE', 'VIEW', 'PROCEDURE', 'FUNCTION', 'TRIGGER', 'SEQUENCE'];
+    if (object_type && !validTypes.includes(object_type.toUpperCase())) {
+      return Formatters.createErrorResponse(`Invalid object_type. Must be one of: ${validTypes.join(', ')}`);
+    }
+
+    try {
+      const rows = await QueryExecutor.getObjectDDL(schema_name, object_name, object_type || null);
+      if (rows.length === 0) return Formatters.createErrorResponse(`No DDL found for ${schema_name}.${object_name}${object_type ? ` (type: ${object_type})` : ''}`);
+
+      const maxCellChars = config.getQueryLimits().maxCellChars;
+      const items = rows.map(r => {
+        let def = r.DEFINITION || '';
+        const truncated = def.length > maxCellChars;
+        if (truncated) def = def.slice(0, maxCellChars) + '…';
+        return { objectType: r.OBJECT_TYPE, schema: r.SCHEMA_NAME, objectName: r.OBJECT_NAME, definition: def, truncated };
+      });
+
+      const structured = { schema: schema_name, objectName: object_name, items };
+      const summary = `DDL for ${schema_name}.${object_name}: ${items.length} definition(s) found`;
+      return Formatters.createResponse(summary, 'text', structured);
+    } catch (err) {
+      logger.error('hana_get_ddl failed:', redactSecrets(err.message));
+      return Formatters.createStructuredErrorResponse('Error getting DDL', err.message, err.sqlCode, err.sqlState);
+    }
+  }
+
+  // ── hana_get_column_stats ─────────────────────────────────────────────────
+
+  static async getColumnStats(args) {
+    logger.tool('hana_get_column_stats', args);
+    const schema_name = _schema(args);
+    const { table_name, column_name, live } = args || {};
+
+    if (!schema_name) return Formatters.createErrorResponse('Schema name is required', 'Provide schema_name or set HANA_SCHEMA.');
+    if (!table_name)  return Formatters.createErrorResponse('table_name is required');
+
+    const sv = Validators.validateSchemaName(schema_name);
+    if (!sv.valid) return Formatters.createErrorResponse('Invalid schema name', sv.error);
+    const tv = Validators.validateTableName(table_name);
+    if (!tv.valid) return Formatters.createErrorResponse('Invalid table name', tv.error);
+
+    if (column_name) {
+      const cv = Validators.validateTableName(column_name);
+      if (!cv.valid) return Formatters.createErrorResponse('Invalid column name', cv.error);
+    }
+
+    const useLive = live === true || live === 'true';
+
+    try {
+      if (useLive) {
+        if (!column_name) return Formatters.createErrorResponse('column_name is required when live=true');
+        const stats = await QueryExecutor.getColumnStatisticsLive(schema_name, table_name, column_name);
+        const structured = { schema: schema_name, table: table_name, column: column_name, source: 'live', ...stats };
+        const summary = `Live stats for ${schema_name}.${table_name}.${column_name}: totalRows=${stats.totalRows}, nullPct=${stats.nullPercent}%, distinct=${stats.distinctCount}`;
+        return Formatters.createResponse(summary, 'text', structured);
+      }
+
+      const rows = await QueryExecutor.getColumnStatistics(schema_name, table_name, column_name || null);
+      const columns = rows.map(r => ({
+        column:        r.COLUMN_NAME,
+        distinctCount: r.DISTINCT_COUNT != null ? Number(r.DISTINCT_COUNT) : null,
+        nullCount:     r.NULL_COUNT     != null ? Number(r.NULL_COUNT)     : null,
+        minValue:      r.MIN_VALUE      != null ? String(r.MIN_VALUE)      : null,
+        maxValue:      r.MAX_VALUE      != null ? String(r.MAX_VALUE)      : null,
+        lastRefresh:   r.LAST_REFRESH_TIME ? String(r.LAST_REFRESH_TIME) : null
+      }));
+      const structured = { schema: schema_name, table: table_name, source: 'SYS.COLUMN_STATISTICS', columns };
+      const summary = `Column statistics for ${schema_name}.${table_name}: ${columns.length} column(s). Use live=true for fresh counts.`;
+      return Formatters.createResponse(summary, 'text', structured);
+    } catch (err) {
+      logger.error('hana_get_column_stats failed:', redactSecrets(err.message));
+      return Formatters.createStructuredErrorResponse('Error getting column stats', err.message, err.sqlCode, err.sqlState);
+    }
+  }
+
+  // ── hana_list_functions ───────────────────────────────────────────────────
+
+  static async listFunctions(args) {
+    logger.tool('hana_list_functions', args);
+    const schema_name = _schema(args);
+    if (!schema_name) return Formatters.createErrorResponse('Schema name is required', 'Provide schema_name or set HANA_SCHEMA.');
+
+    const sv = Validators.validateSchemaName(schema_name);
+    if (!sv.valid) return Formatters.createErrorResponse('Invalid schema name', sv.error);
+
+    const { limit, offset, prefix } = _pageArgs(args);
+
+    try {
+      const { rows, total } = await QueryExecutor.getFunctionsPage(schema_name, prefix, limit, offset);
+      const truncated  = offset + rows.length < total;
+      const nextOffset = truncated ? offset + rows.length : null;
+      const items = rows.map(r => ({
+        functionName:  r.FUNCTION_NAME,
+        functionType:  r.FUNCTION_TYPE,
+        inputParams:   r.INPUT_PARAMETER_COUNT,
+        createTime:    r.CREATE_TIME ? String(r.CREATE_TIME) : null
+      }));
+      const structured = { items, returned: items.length, totalAvailable: total, truncated, nextOffset: truncated ? nextOffset : null };
+      const summary = `Functions in ${schema_name}: showing ${items.length} of ${total}${truncated ? `. nextOffset=${nextOffset}` : ''}.`;
+      return Formatters.createResponse(summary, 'text', structured);
+    } catch (err) {
+      logger.error('hana_list_functions failed:', redactSecrets(err.message));
+      return Formatters.createStructuredErrorResponse('Error listing functions', err.message, err.sqlCode, err.sqlState);
+    }
+  }
+
+  // ── hana_describe_function ────────────────────────────────────────────────
+
+  static async describeFunction(args) {
+    logger.tool('hana_describe_function', args);
+    const schema_name = _schema(args);
+    const { function_name } = args || {};
+
+    if (!schema_name)   return Formatters.createErrorResponse('Schema name is required', 'Provide schema_name or set HANA_SCHEMA.');
+    if (!function_name) return Formatters.createErrorResponse('function_name is required');
+
+    const sv = Validators.validateSchemaName(schema_name);
+    if (!sv.valid) return Formatters.createErrorResponse('Invalid schema name', sv.error);
+    const fv = Validators.validateTableName(function_name);
+    if (!fv.valid) return Formatters.createErrorResponse('Invalid function name', fv.error);
+
+    const { catalogDatabase, error: catErr } = resolveCatalogDatabase(args);
+    if (catErr) return Formatters.createErrorResponse('Invalid metadata catalog', catErr);
+
+    try {
+      const params = await QueryExecutor.getFunctionParameters(schema_name, function_name, catalogDatabase);
+      const structured = {
+        schema: schema_name,
+        functionName: function_name,
+        parameters: params.map(p => ({
+          name:          p.PARAMETER_NAME,
+          dataType:      p.DATA_TYPE_NAME,
+          length:        p.LENGTH,
+          scale:         p.SCALE,
+          parameterType: p.PARAMETER_TYPE,
+          position:      p.POSITION
+        }))
+      };
+      const summary = `Function ${schema_name}.${function_name}: ${params.length} parameter(s)`;
+      return Formatters.createResponse(summary, 'text', structured);
+    } catch (err) {
+      logger.error('hana_describe_function failed:', redactSecrets(err.message));
+      return Formatters.createStructuredErrorResponse('Error describing function', err.message, err.sqlCode, err.sqlState);
+    }
+  }
+
+  // ── hana_list_calculation_views ───────────────────────────────────────────
+
+  static async listCalculationViews(args) {
+    logger.tool('hana_list_calculation_views', args);
+    const { limit: rawLimit, offset: rawOffset, prefix: rawPrefix } = args || {};
+
+    const limits     = config.getQueryLimits();
+    const defaultCap = limits.listDefaultLimit;
+    const rawL       = rawLimit != null ? Number(rawLimit) : defaultCap;
+    const limit      = Math.min(Math.max(1, Number.isFinite(rawL) ? rawL : defaultCap), defaultCap);
+    const offset     = Math.max(0, rawOffset != null ? Number(rawOffset) || 0 : 0);
+    const prefix     = rawPrefix != null ? String(rawPrefix) : '';
+
+    try {
+      const { rows, total } = await QueryExecutor.getCalculationViewsPage(prefix, limit, offset);
+      const truncated  = offset + rows.length < total;
+      const nextOffset = truncated ? offset + rows.length : null;
+      const items = rows.map(r => ({
+        viewName:      r.VIEW_NAME,
+        hasParameters: r.HAS_PARAMETERS === 'TRUE',
+        readOnly:      r.READ_ONLY === 'TRUE',
+        createTime:    r.CREATE_TIME ? String(r.CREATE_TIME) : null
+      }));
+      const structured = { schema: '_SYS_BIC', items, returned: items.length, totalAvailable: total, truncated, nextOffset: truncated ? nextOffset : null };
+      const summary = `Calculation views in _SYS_BIC: showing ${items.length} of ${total}${truncated ? `. nextOffset=${nextOffset}` : ''}.`;
+      return Formatters.createResponse(summary, 'text', structured);
+    } catch (err) {
+      logger.error('hana_list_calculation_views failed:', redactSecrets(err.message));
+      return Formatters.createStructuredErrorResponse('Error listing calculation views', err.message, err.sqlCode, err.sqlState);
+    }
+  }
+
+  // ── hana_get_session_info ─────────────────────────────────────────────────
+
+  static async getSessionInfo(args) {
+    logger.tool('hana_get_session_info', args);
+    try {
+      const info = await QueryExecutor.getSessionInfo();
+      const summary = `Session: user=${info.currentUser}, schema=${info.currentSchema}, db=${info.databaseName || 'N/A'}`;
+      return Formatters.createResponse(summary, 'text', info);
+    } catch (err) {
+      logger.error('hana_get_session_info failed:', redactSecrets(err.message));
+      return Formatters.createStructuredErrorResponse('Error getting session info', err.message, err.sqlCode, err.sqlState);
+    }
+  }
+
+  // ── hana_search_tables ────────────────────────────────────────────────────
+
+  static async searchTables(args) {
+    logger.tool('hana_search_tables', args);
+    const { table_pattern, schema_name } = args || {};
+
+    if (!table_pattern) return Formatters.createErrorResponse('table_pattern is required');
+
+    const pv = Validators.validateColumnPattern(table_pattern);
+    if (!pv.valid) return Formatters.createErrorResponse('Invalid table pattern', pv.error);
+
+    if (schema_name) {
+      const sv = Validators.validateSchemaName(schema_name);
+      if (!sv.valid) return Formatters.createErrorResponse('Invalid schema name', sv.error);
+    }
+
+    const limits   = config.getQueryLimits();
+    const rawLimit = args.limit != null ? Number(args.limit) : limits.listDefaultLimit;
+    const limit    = Math.min(Math.max(1, Number.isFinite(rawLimit) ? rawLimit : limits.listDefaultLimit), 2000);
+
+    try {
+      const rows = await QueryExecutor.searchTables(table_pattern, schema_name || null, limit);
+      const structured = {
+        pattern:  table_pattern,
+        schema:   schema_name || null,
+        returned: rows.length,
+        capped:   rows.length === limit,
+        tables:   rows.map(r => ({ schema: r.SCHEMA_NAME, table: r.TABLE_NAME, tableType: r.TABLE_TYPE }))
+      };
+      const summary = `Table search '${table_pattern}'${schema_name ? ` in ${schema_name}` : ''}: ${rows.length} match(es)${structured.capped ? ' (limit reached)' : ''}.`;
+      return Formatters.createResponse(summary, 'text', structured);
+    } catch (err) {
+      logger.error('hana_search_tables failed:', redactSecrets(err.message));
+      return Formatters.createStructuredErrorResponse('Error searching tables', err.message, err.sqlCode, err.sqlState);
+    }
+  }
+
+  // ── hana_get_expensive_queries ────────────────────────────────────────────
+
+  static async getExpensiveQueries(args) {
+    logger.tool('hana_get_expensive_queries', args);
+    const rawLimit = args && args.limit != null ? Number(args.limit) : 20;
+    const limit    = Math.min(Math.max(1, Number.isFinite(rawLimit) ? rawLimit : 20), 100);
+
+    try {
+      const rows = await QueryExecutor.getExpensiveQueries(limit);
+      const structured = {
+        returned: rows.length,
+        queries: rows.map(r => ({
+          hash:             r.STATEMENT_HASH,
+          user:             r.DB_USER,
+          application:      r.APPLICATION_NAME,
+          startTime:        r.START_TIME ? String(r.START_TIME) : null,
+          durationMicrosec: r.DURATION_MICROSEC != null ? Number(r.DURATION_MICROSEC) : null,
+          cpuTime:          r.CPU_TIME          != null ? Number(r.CPU_TIME)           : null,
+          lockWaitDuration: r.LOCK_WAIT_DURATION != null ? Number(r.LOCK_WAIT_DURATION) : null,
+          records:          r.RECORDS           != null ? Number(r.RECORDS)            : null,
+          statementPreview: r.STATEMENT_PREVIEW || null
+        }))
+      };
+      const summary = `Top ${rows.length} expensive queries by duration.`;
+      return Formatters.createResponse(summary, 'text', structured);
+    } catch (err) {
+      logger.error('hana_get_expensive_queries failed:', redactSecrets(err.message));
+      return Formatters.createStructuredErrorResponse(
+        'Error getting expensive queries',
+        err.sqlCode != null
+          ? err.message
+          : `${err.message} — requires MONITORING privilege to read M_EXPENSIVE_STATEMENTS.`,
+        err.sqlCode,
+        err.sqlState
+      );
+    }
+  }
+
+  // ── hana_get_dependencies ─────────────────────────────────────────────────
+
+  static async getDependencies(args) {
+    logger.tool('hana_get_dependencies', args);
+    const schema_name = _schema(args);
+    const { object_name, direction } = args || {};
+
+    if (!schema_name) return Formatters.createErrorResponse('Schema name is required', 'Provide schema_name or set HANA_SCHEMA.');
+    if (!object_name) return Formatters.createErrorResponse('object_name is required');
+
+    const sv = Validators.validateSchemaName(schema_name);
+    if (!sv.valid) return Formatters.createErrorResponse('Invalid schema name', sv.error);
+    const ov = Validators.validateTableName(object_name);
+    if (!ov.valid) return Formatters.createErrorResponse('Invalid object name', ov.error);
+
+    const validDirections = ['base', 'dependent', 'both'];
+    const dir = direction && validDirections.includes(direction) ? direction : 'both';
+
+    try {
+      const rows = await QueryExecutor.getObjectDependencies(schema_name, object_name, dir);
+      const structured = {
+        schema: schema_name,
+        objectName: object_name,
+        direction: dir,
+        returned: rows.length,
+        capped: rows.length === 200,
+        dependencies: rows.map(r => ({
+          baseSchema:      r.BASE_SCHEMA_NAME,
+          baseObject:      r.BASE_OBJECT_NAME,
+          baseType:        r.BASE_OBJECT_TYPE,
+          dependentSchema: r.DEPENDENT_SCHEMA_NAME,
+          dependentObject: r.DEPENDENT_OBJECT_NAME,
+          dependentType:   r.DEPENDENT_OBJECT_TYPE
+        }))
+      };
+      const summary = `Dependencies for ${schema_name}.${object_name} (direction=${dir}): ${rows.length} relationship(s)${structured.capped ? ' (capped at 200)' : ''}.`;
+      return Formatters.createResponse(summary, 'text', structured);
+    } catch (err) {
+      logger.error('hana_get_dependencies failed:', redactSecrets(err.message));
+      return Formatters.createStructuredErrorResponse('Error getting dependencies', err.message, err.sqlCode, err.sqlState);
+    }
+  }
+
+  // ── hana_get_partition_info ───────────────────────────────────────────────
+
+  static async getPartitionInfo(args) {
+    logger.tool('hana_get_partition_info', args);
+    const schema_name = _schema(args);
+    const { table_name } = args || {};
+
+    if (!schema_name) return Formatters.createErrorResponse('Schema name is required', 'Provide schema_name or set HANA_SCHEMA.');
+    if (!table_name)  return Formatters.createErrorResponse('table_name is required');
+
+    const sv = Validators.validateSchemaName(schema_name);
+    if (!sv.valid) return Formatters.createErrorResponse('Invalid schema name', sv.error);
+    const tv = Validators.validateTableName(table_name);
+    if (!tv.valid) return Formatters.createErrorResponse('Invalid table name', tv.error);
+
+    try {
+      const rows = await QueryExecutor.getPartitionInfo(schema_name, table_name);
+      if (rows.length === 0) {
+        return Formatters.createResponse(
+          `Table ${schema_name}.${table_name} is not partitioned (or partition info unavailable).`,
+          'text',
+          { schema: schema_name, table: table_name, partitioned: false, partitions: [] }
+        );
+      }
+      const structured = {
+        schema: schema_name,
+        table:  table_name,
+        partitioned: true,
+        partitionCount: rows.length,
+        partitions: rows.map(r => ({
+          partId:          r.PART_ID,
+          partName:        r.PART_NAME || null,
+          level1Partition: r.LEVEL_1_PARTITION || null,
+          level2Partition: r.LEVEL_2_PARTITION || null,
+          level3Partition: r.LEVEL_3_PARTITION || null,
+          loadUnit:        r.LOAD_UNIT || null
+        }))
+      };
+      const summary = `Partition info for ${schema_name}.${table_name}: ${rows.length} partition(s)`;
+      return Formatters.createResponse(summary, 'text', structured);
+    } catch (err) {
+      logger.error('hana_get_partition_info failed:', redactSecrets(err.message));
+      return Formatters.createStructuredErrorResponse('Error getting partition info', err.message, err.sqlCode, err.sqlState);
+    }
+  }
+
+  // ── hana_list_sequences ───────────────────────────────────────────────────
+
+  static async listSequences(args) {
+    logger.tool('hana_list_sequences', args);
+    const schema_name = _schema(args);
+    if (!schema_name) return Formatters.createErrorResponse('Schema name is required', 'Provide schema_name or set HANA_SCHEMA.');
+
+    const sv = Validators.validateSchemaName(schema_name);
+    if (!sv.valid) return Formatters.createErrorResponse('Invalid schema name', sv.error);
+
+    const { limit, offset, prefix } = _pageArgs(args);
+
+    try {
+      const { rows, total } = await QueryExecutor.getSequencesPage(schema_name, prefix, limit, offset);
+      const truncated  = offset + rows.length < total;
+      const nextOffset = truncated ? offset + rows.length : null;
+      const items = rows.map(r => ({
+        sequenceName: r.SEQUENCE_NAME,
+        startNumber:  r.START_NUMBER  != null ? Number(r.START_NUMBER)  : null,
+        minValue:     r.MIN_VALUE     != null ? Number(r.MIN_VALUE)     : null,
+        maxValue:     r.MAX_VALUE     != null ? Number(r.MAX_VALUE)     : null,
+        incrementBy:  r.INCREMENT_BY  != null ? Number(r.INCREMENT_BY)  : null,
+        isCycled:     r.IS_CYCLED === 'TRUE',
+        cacheSize:    r.CACHE_SIZE    != null ? Number(r.CACHE_SIZE)    : null,
+        createTime:   r.CREATE_TIME ? String(r.CREATE_TIME) : null
+      }));
+      const structured = { items, returned: items.length, totalAvailable: total, truncated, nextOffset: truncated ? nextOffset : null };
+      const summary = `Sequences in ${schema_name}: showing ${items.length} of ${total}${truncated ? `. nextOffset=${nextOffset}` : ''}.`;
+      return Formatters.createResponse(summary, 'text', structured);
+    } catch (err) {
+      logger.error('hana_list_sequences failed:', redactSecrets(err.message));
+      return Formatters.createStructuredErrorResponse('Error listing sequences', err.message, err.sqlCode, err.sqlState);
     }
   }
 }
