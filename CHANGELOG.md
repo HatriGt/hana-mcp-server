@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here. Versions follow [Semantic Versioning](https://semver.org/).
 
-> **Note:** If you mean “version 2” informally, this package line is **`0.2.x`** (there is no `2.0.0` tag). This log starts at **`0.2.0`**.
+> **Note:** If you mean “version 2” informally, the package line is **`0.x`** (there is no `2.0.0` tag). This log starts at **`0.2.0`**; the current release is **`0.3.1`**.
 
 ## [Unreleased]
 
