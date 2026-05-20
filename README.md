@@ -15,7 +15,7 @@
 | Document | Purpose |
 |----------|---------|
 | This README | Prerequisites, install, **how to wire each client**, capability summary, configuration cheat sheet, troubleshooting |
-| [CHANGELOG.md](CHANGELOG.md) | **Release history** — features and fixes by version (`0.2.x`, latest `0.2.2`) |
+| [CHANGELOG.md](CHANGELOG.md) | **Release history** — features and fixes by version (latest `0.3.1`) |
 | [docs/README.md](docs/README.md) | Index of `/docs` |
 | [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md) | **Authoritative** env reference: every variable, defaults, **hard bounds**, HTTP auth, security notes |
 | [docs/configuration-samples.md](docs/configuration-samples.md) | **Copy-paste**: connection profiles (single-container, MDC), semantics JSON, paging pointers |
@@ -175,15 +175,19 @@ Further notes: [ENVIRONMENT.md §9](docs/ENVIRONMENT.md#9-security-notes).
 
 ## 🎯 Capabilities
 
-| Area | What callers get |
-|------|-------------------|
-| **Schema** | Paged schema/table lists, column metadata, connectivity checks |
-| **SQL** | Parameterized execution; optional row/column/cell caps; paging via `maxRows`/`offset`/`includeTotal`; continuation via `hana_query_next_page` |
-| **Discovery (core)** | `hana_list_constraints`, `hana_list_foreign_keys`, `hana_get_table_stats`, `hana_get_sample_data`, `hana_search_columns`, `hana_list_views`, `hana_describe_view`, `hana_list_synonyms`, `hana_list_procedures`, `hana_describe_procedure`, `hana_explain_plan`, `hana_list_privileges` |
-| **Discovery (extended)** | `hana_get_ddl`, `hana_get_column_stats`, `hana_list_functions`, `hana_describe_function`, `hana_list_calculation_views`, `hana_get_session_info`, `hana_search_tables`, `hana_get_expensive_queries`, `hana_get_dependencies`, `hana_get_partition_info`, `hana_list_sequences` |
-| **DML guard** | INSERT / UPDATE / DELETE / TRUNCATE blocked by default; opt-in per operation via `HANA_ALLOW_*` |
-| **Resources** | `hana:///` URIs for list/read; large payloads flagged with `truncated` metadata |
-| **Domain knowledge (optional)** | JSON overlay for **`hana_explain_table`** — [configuration-samples.md](docs/configuration-samples.md) |
+**34 tools** across six areas, all verified on HANA Cloud.
+
+| Area | Tools | What you get |
+|------|-------|--------------|
+| **Connection & config** | `hana_show_config` `hana_test_connection` `hana_show_env_vars` `hana_get_session_info` | Verify connectivity, inspect configuration, see current user / schema / database / version |
+| **Schema browsing** | `hana_list_schemas` `hana_list_tables` `hana_describe_table` `hana_explain_table` `hana_search_tables` `hana_search_columns` | Paginated schema/table lists, column metadata, cross-schema search, optional business-meaning overlay |
+| **SQL execution** | `hana_execute_query` `hana_query_next_page` | Parameterized SQL with optional row/column/cell caps, paging (`maxRows`/`offset`/`includeTotal`), and snapshot continuation |
+| **Structural analysis** | `hana_list_constraints` `hana_list_foreign_keys` `hana_list_indexes` `hana_describe_index` `hana_list_views` `hana_describe_view` `hana_list_synonyms` `hana_list_privileges` `hana_get_ddl` | PK/UK/FK/check constraints, indexes, views with SQL definition, synonyms, effective privileges, CREATE statement DDL |
+| **Code objects** | `hana_list_procedures` `hana_describe_procedure` `hana_list_functions` `hana_describe_function` `hana_list_calculation_views` `hana_list_sequences` | Stored procedures, scalar/table functions, SAP BW/S4 calculation views (`_SYS_BIC`), sequences |
+| **Data & performance** | `hana_get_table_stats` `hana_get_sample_data` `hana_get_column_stats` `hana_explain_plan` `hana_get_dependencies` `hana_get_partition_info` `hana_get_expensive_queries` | Row counts, sample rows, distinct/null stats, query execution plan, object dependency graph, partition info, top expensive statements |
+| **DML guard** | — | INSERT / UPDATE / DELETE / TRUNCATE **blocked by default**; opt-in individually via `HANA_ALLOW_INSERT` / `HANA_ALLOW_UPDATE` / `HANA_ALLOW_DELETE` |
+| **Resources** | `hana:///schemas` `hana:///schemas/{s}/tables/{t}` | MCP resource URIs for schema and table enumeration; `truncated` flag on large payloads |
+| **Domain knowledge** | via `hana_explain_table` | Optional JSON semantics overlay (table descriptions, column meanings, code-value maps) — [configuration-samples.md](docs/configuration-samples.md) |
 
 ---
 
@@ -336,12 +340,12 @@ npx hana-mcp-ui
 
 ![HANA MCP Server Architecture](docs/hana_mcp_architecture.svg)
 
-```
+```text
 hana-mcp-server/
 ├── src/
 │   ├── server/           # MCP lifecycle, resources, HTTP transport
-│   ├── tools/            # Schema, table, query, index, config tools
-│   ├── database/         # HANA client, connection manager, executor, query runner
+│   ├── tools/            # 34 tools: schema, SQL, discovery, config
+│   ├── database/         # HANA client, connection pool, executor, query runner
 │   ├── semantics/        # Optional semantics / domain JSON loader
 │   ├── utils/            # Logger, config, validators, formatters
 │   ├── query-snapshot-store.js

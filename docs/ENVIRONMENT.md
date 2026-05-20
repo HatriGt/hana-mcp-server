@@ -191,7 +191,7 @@ Used by [`src/server/http-index.js`](../src/server/http-index.js) and [`src/serv
 | Connection pool | `HANA_CONNECTION_POOL_SIZE` |
 | Audit logging | `HANA_AUDIT_ENABLED`, `HANA_AUDIT_LOG_FILE` |
 | DML restrictions | `HANA_ALLOW_INSERT`, `HANA_ALLOW_UPDATE`, `HANA_ALLOW_DELETE` |
-| Extended discovery (0.3.1) | `hana_get_ddl`, `hana_get_column_stats`, `hana_list_functions`, `hana_describe_function`, `hana_list_calculation_views`, `hana_get_session_info`, `hana_search_tables`, `hana_get_expensive_queries`, `hana_get_dependencies`, `hana_get_partition_info`, `hana_list_sequences` — no additional env vars; `hana_get_expensive_queries` requires MONITORING privilege |
+| Extended discovery (0.3.1) | No extra env vars. `hana_get_expensive_queries` requires MONITORING privilege on the connected user. |
 | `hana_list_schemas` / `hana_list_tables` | `HANA_LIST_DEFAULT_LIMIT` |
 | `hana_explain_table` (business/domain semantics JSON) | `HANA_SEMANTICS_PATH`, `HANA_SEMANTICS_URL`, `HANA_SEMANTICS_TTL_MS`, `HANA_METADATA_CATALOG_DATABASE`, tool `catalog_database` |
 | `hana:///` resources | `HANA_RESOURCE_LIST_MAX_ITEMS` (and HANA connectivity) |
