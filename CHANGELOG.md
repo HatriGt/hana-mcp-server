@@ -8,6 +8,14 @@ All notable changes to this project are documented here. Versions follow [Semant
 
 _No changes yet._
 
+## [0.3.2] — 2026-07-15
+
+**Patch** release. Fixes query results being reported as counts only in MCP clients.
+
+### Fixed
+
+- `hana_execute_query` / `hana_query_next_page` now render the returned rows as a markdown table inside the `content[].text` block in addition to `structuredContent`. Many MCP clients only surface `content[].text` to the model and ignore `structuredContent`, which caused clients to report row counts instead of actual results even when explicitly asked to fetch them. `structuredContent` (rows, paging metadata, `snapshotId`) is unchanged.
+
 ## [0.3.1] — 2026-05-20
 
 **Patch** release. Adds 11 extended discovery tools covering DDL, column profiling, functions, calculation views, session context, cross-schema search, performance monitoring, dependency analysis, partitions, and sequences.

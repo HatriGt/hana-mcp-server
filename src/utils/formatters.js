@@ -338,7 +338,31 @@ class Formatters {
     }
     summary += ` | SQL preview: ${q}`;
 
-    return this.createResponse(summary, 'text', structured, false);
+    // Render the actual rows into the text block as well. Many MCP clients only
+    // surface content[].text to the model and ignore structuredContent, so a
+    // count-only summary makes clients report counts instead of results.
+    const text = `${summary}\n\n${this.renderRowsTable(runResult.columns, runResult.rows)}`;
+
+    return this.createResponse(text, 'text', structured, false);
+  }
+
+  /**
+   * Render columns/rows as a markdown table for the text content block.
+   * @param {string[]} columns
+   * @param {object[]} rows
+   * @returns {string}
+   */
+  static renderRowsTable(columns, rows) {
+    if (!rows || rows.length === 0) {
+      return 'No rows returned.';
+    }
+    const cols = columns && columns.length > 0 ? columns : Object.keys(rows[0]);
+    const header = `| ${cols.join(' | ')} |`;
+    const separator = `| ${cols.map(() => '---').join(' | ')} |`;
+    const body = rows
+      .map((row) => `| ${cols.map((col) => (row[col] == null ? '' : String(row[col]))).join(' | ')} |`)
+      .join('\n');
+    return `${header}\n${separator}\n${body}`;
   }
 
   /**

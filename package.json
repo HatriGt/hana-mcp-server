@@ -1,6 +1,6 @@
 {
   "name": "hana-mcp-server",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "SAP HANA MCP server — Model Context Protocol server for SAP HANA and HANA Cloud. Use with Claude Code, VS Code, and other AI agents.",
   "main": "hana-mcp-server.js",
   "bin": {
