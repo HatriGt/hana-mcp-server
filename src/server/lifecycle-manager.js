@@ -82,16 +82,13 @@ class LifecycleManager {
   }
 
   /**
-   * Keep the process alive
+   * Keep the process alive while the MCP client is connected via stdin.
+   * The readline reader on stdin already keeps the event loop active, so we
+   * deliberately do NOT add a setInterval here. When stdin closes, the
+   * readline 'close' handler in MCPServer will trigger a clean shutdown.
    */
   keepAlive() {
-    // Keep stdin open
     process.stdin.resume();
-    
-    // Keep process alive with interval
-    setInterval(() => {
-      // This keeps the event loop active
-    }, 1000);
   }
 
   /**

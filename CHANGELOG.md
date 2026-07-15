@@ -8,6 +8,14 @@ All notable changes to this project are documented here. Versions follow [Semant
 
 _No changes yet._
 
+## [0.3.3] — 2026-07-15
+
+**Patch** release. Fixes zombie server processes on stdio.
+
+### Fixed
+
+- STDIO server now shuts down cleanly when the MCP client closes stdin. Previously the readline `close` handler kept the process alive and `lifecycle-manager` ran a `setInterval` keep-alive, so every Cursor/IDE restart or MCP refresh left an orphaned server process holding open HANA connections (leading to connection buildup and UI hangs). The keep-alive interval was removed; the stdin reader keeps the event loop active while connected and triggers a graceful shutdown on close.
+
 ## [0.3.2] — 2026-07-15
 
 **Patch** release. Fixes query results being reported as counts only in MCP clients.

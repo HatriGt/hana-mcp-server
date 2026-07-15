@@ -53,14 +53,13 @@ class MCPServer {
       await this.handleLine(line);
     });
 
-    // Handle readline close
+    // Handle readline close: stdin from MCP client closed -> exit cleanly.
+    // Without this, the server lingers as a zombie holding HANA connections
+    // every time Cursor restarts/refreshes the MCP server (causes UI hangs).
     this.rl.on('close', async () => {
-      if (!this.isShuttingDown) {
-        logger.info('Readline closed, but keeping process alive');
-      } else {
-        logger.info('Server shutting down');
-        await lifecycleManager.shutdown();
-      }
+      logger.info('Stdin closed by MCP client, shutting down');
+      this.isShuttingDown = true;
+      await lifecycleManager.shutdown();
     });
   }
 
