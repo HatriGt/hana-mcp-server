@@ -58,7 +58,10 @@ class Formatters {
   }
 
   /**
-   * Create a structured error response that includes sqlCode and sqlState for AI clients.
+   * Create an error response that includes sqlCode and sqlState in the text body.
+   * Deliberately omits structuredContent: several tools declare a success-only
+   * outputSchema (query/list/explain). MCP clients validate structuredContent
+   * against that schema and reject {message,details} with -32602.
    * @param {string} message
    * @param {string} [details]
    * @param {number|null} [sqlCode]
@@ -67,16 +70,10 @@ class Formatters {
   static createStructuredErrorResponse(message, details = '', sqlCode = null, sqlState = null) {
     const safeMsg = redactSecrets(message);
     const safeDetails = details ? redactSecrets(String(details)) : '';
-    const text = safeDetails ? `${safeMsg}\n\n${safeDetails}` : safeMsg;
-    const structured = { message: safeMsg };
-    if (safeDetails) structured.details = safeDetails;
-    if (sqlCode != null) structured.sqlCode = sqlCode;
-    if (sqlState != null) structured.sqlState = sqlState;
-    return {
-      content: [{ type: 'text', text: `❌ ${text}` }],
-      structuredContent: structured,
-      isError: true
-    };
+    let text = safeDetails ? `${safeMsg}\n\n${safeDetails}` : safeMsg;
+    if (sqlCode != null) text += `\nsqlCode=${sqlCode}`;
+    if (sqlState != null) text += `\nsqlState=${sqlState}`;
+    return this.createResponse(`❌ ${text}`, 'text', undefined, true);
   }
 
   /**

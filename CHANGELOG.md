@@ -8,6 +8,15 @@ All notable changes to this project are documented here. Versions follow [Semant
 
 _No changes yet._
 
+## [0.3.4] — 2026-07-18
+
+**Patch** release. Fixes MCP client `-32602` rejections of query tool results.
+
+### Fixed
+
+- `hana_execute_query` / `hana_query_next_page` `outputSchema` now allows `maxRows: null` (emitted when query limits are off and the caller omits `maxRows`). Clients previously rejected successful results with `data/maxRows must be number`.
+- SQL/tool error responses no longer attach a `{message, details}` `structuredContent` object. That shape does not match the success-only `outputSchema`, so clients discarded real HANA errors as `missing required property 'kind'`. `sqlCode` / `sqlState` remain in the text body.
+
 ## [0.3.3] — 2026-07-15
 
 **Patch** release. Fixes zombie server processes on stdio.

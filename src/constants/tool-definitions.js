@@ -25,7 +25,10 @@ const QUERY_RESULT_OUTPUT_SCHEMA = {
     kind: { type: 'string', enum: ['select', 'other'] },
     truncated: { type: 'boolean' },
     returnedRows: { type: 'number' },
-    maxRows: { type: 'number' },
+    // null when HANA_QUERY_LIMITS_ENABLED is off and the caller did not pass maxRows
+    maxRows: {
+      anyOf: [{ type: 'number' }, { type: 'null' }]
+    },
     offset: { type: 'number' },
     nextOffset: {
       anyOf: [{ type: 'number' }, { type: 'null' }]
