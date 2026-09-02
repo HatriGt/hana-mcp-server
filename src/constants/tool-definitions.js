@@ -418,7 +418,7 @@ const TOOLS = [
   {
     name: 'hana_get_table_stats',
     title: 'Get table statistics',
-    description: 'Return row count, table type, column-store flag, primary key flag, and disk size (requires MONITORING privilege for disk size) from SYS.TABLES and SYS.M_TABLE_SIZES.',
+    description: 'Return row count, table type, column-store flag, primary key flag, and disk size. Row count and disk size come from the monitoring views (SYS.M_CS_TABLES / SYS.M_RS_TABLES and SYS.M_TABLE_PERSISTENCE_STATISTICS), readable with the MONITORING role; metadata comes from SYS.TABLES.',
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     inputSchema: {
       type: 'object',
