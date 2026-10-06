@@ -151,9 +151,27 @@ class QueryExecutor {
       [schemaName, tableName]
     );
     const meta = rows.length > 0 ? rows[0] : null;
+    if (!meta) return { meta: null, diskBytes: null, diskSizeUnavailable: false };
 
-    // RECORD_COUNT was removed from SYS.TABLES in HANA Cloud; use COUNT(*) for accuracy
-    if (meta) {
+    const isColumn = meta.IS_COLUMN_TABLE === 'TRUE';
+
+    // Row count from the monitoring views (SYS.M_CS_TABLES for column tables,
+    // SYS.M_RS_TABLES for row tables). A restricted read-only user with the
+    // MONITORING role can read these WITHOUT any SELECT privilege on the table
+    // itself; the previous COUNT(*) path failed with "insufficient privilege"
+    // for such users and returned rows=N/A even though the count is in the
+    // catalog. COUNT(*) is kept as a fallback for HANA Cloud edge cases / rows
+    // absent from the CS/RS catalogs / privileged callers.
+    meta.RECORD_COUNT = null;
+    try {
+      const monView = isColumn ? 'SYS.M_CS_TABLES' : 'SYS.M_RS_TABLES';
+      const rc = await this.executeScalarQuery(
+        `SELECT RECORD_COUNT FROM ${monView} WHERE SCHEMA_NAME = ? AND TABLE_NAME = ?`,
+        [schemaName, tableName]
+      );
+      if (rc != null) meta.RECORD_COUNT = Number(rc);
+    } catch (_) { /* monitoring view unavailable; fall through to COUNT(*) */ }
+    if (meta.RECORD_COUNT == null) {
       try {
         meta.RECORD_COUNT = await this.getTableRowCount(schemaName, tableName);
       } catch (_) {
@@ -161,18 +179,33 @@ class QueryExecutor {
       }
     }
 
+    // Disk size from SYS.M_TABLE_PERSISTENCE_STATISTICS.DISK_SIZE, the on-prem
+    // (HANA 2.0) source, readable with MONITORING. The previous query used
+    // SYS.M_TABLE_SIZES, which only exists on HANA Cloud; on on-prem HANA it
+    // raises "invalid table name", which was then mis-surfaced as "requires
+    // MONITORING privilege". M_TABLE_SIZES is retained as a HANA Cloud fallback.
     let diskBytes = null;
     let diskSizeUnavailable = false;
     try {
-      const sizeRow = await this.executeScalarQuery(
-        `SELECT ALLOCATED_FIXED_PART_SIZE + ALLOCATED_VARIABLE_PART_SIZE AS TOTAL_BYTES
-         FROM SYS.M_TABLE_SIZES WHERE SCHEMA_NAME = ? AND TABLE_NAME = ?`,
+      const ds = await this.executeScalarQuery(
+        `SELECT DISK_SIZE FROM SYS.M_TABLE_PERSISTENCE_STATISTICS
+         WHERE SCHEMA_NAME = ? AND TABLE_NAME = ?`,
         [schemaName, tableName]
       );
-      diskBytes = sizeRow != null ? Number(sizeRow) : null;
+      diskBytes = ds != null ? Number(ds) : null;
     } catch (_) {
-      diskSizeUnavailable = true;
+      try {
+        const sizeRow = await this.executeScalarQuery(
+          `SELECT ALLOCATED_FIXED_PART_SIZE + ALLOCATED_VARIABLE_PART_SIZE AS TOTAL_BYTES
+           FROM SYS.M_TABLE_SIZES WHERE SCHEMA_NAME = ? AND TABLE_NAME = ?`,
+          [schemaName, tableName]
+        );
+        diskBytes = sizeRow != null ? Number(sizeRow) : null;
+      } catch (_) {
+        diskSizeUnavailable = true;
+      }
     }
+    if (diskBytes == null && !diskSizeUnavailable) diskSizeUnavailable = true;
 
     return { meta, diskBytes, diskSizeUnavailable };
   }

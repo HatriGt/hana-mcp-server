@@ -116,7 +116,7 @@ class DiscoveryTools {
 
       let summary = `Stats for ${schema_name}.${table_name}: rows=${structured.rowCount ?? 'N/A'}, type=${structured.tableType}`;
       if (diskBytes != null) summary += `, disk=${(diskBytes / 1024).toFixed(1)}KB`;
-      else if (diskSizeUnavailable) summary += ', disk=unavailable (requires MONITORING privilege)';
+      else if (diskSizeUnavailable) summary += ', disk=unavailable';
 
       return Formatters.createResponse(summary, 'text', structured);
     } catch (err) {

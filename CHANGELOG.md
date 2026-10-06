@@ -6,7 +6,17 @@ All notable changes to this project are documented here. Versions follow [Semant
 
 ## [Unreleased]
 
-_No changes yet._
+### Fixed
+
+- `hana_get_table_stats`: return real row count and disk size on on-prem HANA 2.0
+  and for restricted read-only users. Row count now reads `RECORD_COUNT` from
+  `SYS.M_CS_TABLES` / `SYS.M_RS_TABLES` (instead of `COUNT(*)`, which fails with
+  `insufficient privilege` for users without table SELECT), and disk size reads
+  `DISK_SIZE` from `SYS.M_TABLE_PERSISTENCE_STATISTICS` (instead of
+  `SYS.M_TABLE_SIZES`, which exists only on HANA Cloud and was otherwise
+  mis-reported as "requires MONITORING privilege"). `COUNT(*)` and
+  `M_TABLE_SIZES` are retained as fallbacks; HANA Cloud and privileged callers
+  are unaffected.
 
 ## [0.3.4] — 2026-07-18
 
