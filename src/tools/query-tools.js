@@ -125,6 +125,12 @@ class QueryTools {
         'Re-run hana_execute_query to obtain a new snapshotId (TTL: HANA_QUERY_SNAPSHOT_TTL_MS).'
       );
     }
+    if (snap.database !== config.getActiveProfileKey()) {
+      return Formatters.createErrorResponse(
+        'snapshot_id belongs to a different database',
+        `Pass database "${snap.database}" to continue this result set.`
+      );
+    }
 
     const offset  = Math.max(0, Number(args.offset) || 0);
     const maxRows = args.max_rows != null ? args.max_rows : undefined;

@@ -8,6 +8,8 @@ const { METHODS, ERROR_CODES, ERROR_MESSAGES, PROTOCOL_VERSIONS, SERVER_INFO, CA
 const ToolRegistry = require('../tools');
 const { listResources, readResource, listResourceTemplates } = require('./resources');
 const taskStore = require('./task-store');
+const { config } = require('../utils/config');
+const { runWithProfile } = require('../database/db-context');
 
 class MCPHandler {
   /**
@@ -80,15 +82,30 @@ class MCPHandler {
       negotiatedVersion = PROTOCOL_VERSIONS.LATEST;
     }
 
+    const multiDb = config.isMultiDb();
+    const dbNames = config.getProfileKeys();
     const instructions = [
-      'HANA MCP Server is connected to a SAP HANA database and exposes tools for configuration, schema exploration, SQL execution, and optional business semantics.',
-      'Before using the tools, ensure HANA_HOST, HANA_USER, HANA_PASSWORD and (for MDC tenants) HANA_DATABASE_NAME are configured in the server environment.',
+      'HANA MCP Server exposes tools for configuration, schema exploration, SQL execution, and optional business semantics on SAP HANA.',
+      ...(multiDb
+        ? [
+          `This server connects to multiple HANA databases: ${dbNames.join(', ')}.`,
+          'Every tool except hana_list_databases and hana_show_env_vars REQUIRES a "database" argument naming one of them; calls without it are rejected.',
+          'Call hana_list_databases first to see each database\'s target and its read/insert/update/delete permissions.',
+          'Do not guess the database: if the user has not made clear which one they mean, ask. Be explicit when targeting a production database.',
+          'Pass the same "database" on every call in a task, including hana_query_next_page (a snapshotId only pages on the database it came from).',
+          'Write statements are allowed only where that database\'s permissions permit them.'
+        ]
+        : [
+          'Before using the tools, ensure HANA_HOST, HANA_USER, HANA_PASSWORD and (for MDC tenants) HANA_DATABASE_NAME are configured in the server environment.'
+        ]),
       'Use hana_show_config, hana_test_connection, and hana_show_env_vars to inspect configuration and connectivity before running queries.',
       'hana_execute_query wraps SELECT/WITH statements with LIMIT/OFFSET (see HANA_MAX_RESULT_ROWS). structuredContent reports truncated, nextOffset, and optional snapshotId for hana_query_next_page.',
       'hana_list_schemas and hana_list_tables support prefix, limit, and offset; defaults and caps use HANA_LIST_DEFAULT_LIMIT.',
       'hana_describe_table, hana_explain_table, hana_list_indexes, and hana_describe_index accept optional catalog_database (or HANA_METADATA_CATALOG_DATABASE) to read SYS.* metadata from another MDC database (e.g. HSP) when connected to a different tenant.',
       'hana_explain_table merges SYS.TABLE_COLUMNS with optional JSON from HANA_SEMANTICS_PATH or HANA_SEMANTICS_URL.',
-      'Resource reads for hana:///schemas and hana:///schemas/{schema} cap embedded lists (HANA_RESOURCE_LIST_MAX_ITEMS) and set truncated when applicable.'
+      multiDb
+        ? 'MCP resources (hana:///schemas...) take no database argument and are unavailable in multi-database mode; use the tools instead.'
+        : 'Resource reads for hana:///schemas and hana:///schemas/{schema} cap embedded lists (HANA_RESOURCE_LIST_MAX_ITEMS) and set truncated when applicable.'
     ].join(' ');
     
     return {
@@ -137,12 +154,19 @@ class MCPHandler {
       return this.createErrorResponse(id, ERROR_CODES.INVALID_PARAMS, validation.error);
     }
 
+    // Every tool call runs inside its database profile's scope (multi-database mode),
+    // or the implicit "default" profile (single-database mode).
+    const profileKey = config.isMultiDb() ? (args && args.database) || null : null;
+    const execute = () => (profileKey
+      ? runWithProfile(profileKey, () => ToolRegistry.executeTool(name, args || {}))
+      : ToolRegistry.executeTool(name, args || {}));
+
     const isTaskAugmented = taskMeta && typeof taskMeta === 'object';
     if (isTaskAugmented) {
       const task = taskStore.createTask(taskMeta);
       (async () => {
         try {
-          const result = await ToolRegistry.executeTool(name, args || {});
+          const result = await execute();
           taskStore.completeTask(task.taskId, result);
         } catch (error) {
           logger.error(`Tool execution failed: ${redactSecrets(error.message)}`);
@@ -157,7 +181,7 @@ class MCPHandler {
     }
     
     try {
-      const result = await ToolRegistry.executeTool(name, args || {});
+      const result = await execute();
       return { jsonrpc: '2.0', id, result };
     } catch (error) {
       logger.error(`Tool execution failed: ${redactSecrets(error.message)}`);

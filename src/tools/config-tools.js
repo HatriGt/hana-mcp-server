@@ -63,6 +63,20 @@ class ConfigTools {
     
     return Formatters.createResponse(formattedEnvVars);
   }
+
+  /**
+   * List configured database profiles (no secrets).
+   */
+  static async listDatabases(args) {
+    logger.tool('hana_list_databases');
+
+    const structured = {
+      multiDatabase: config.isMultiDb(),
+      databaseParameterRequired: config.isMultiDb(),
+      databases: config.getProfileSummaries()
+    };
+    return Formatters.createStructuredResponse(structured, 'Database profiles');
+  }
 }
 
 module.exports = ConfigTools; 

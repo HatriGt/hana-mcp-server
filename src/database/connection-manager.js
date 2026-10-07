@@ -7,24 +7,32 @@ const { redactSecrets } = require('../utils/sensitive-redact');
 const { config } = require('../utils/config');
 const { createHanaClient } = require('./hana-client');
 const { ConnectionPool } = require('./connection-pool');
+const { runWithProfile } = require('./db-context');
+
+const NO_DATABASE_ERROR = 'No database selected. Pass the "database" parameter (see hana_list_databases).';
 
 class ConnectionManager {
   constructor() {
-    this._pool = null;
+    /** @type {Map<string, ConnectionPool>} one pool per database profile */
+    this._pools = new Map();
     this.lastConnectionError = null;
   }
 
+  /** Pool for the active profile; created lazily. Connections are always opened with that profile's credentials. */
   _getPool() {
-    if (this._pool) return this._pool;
+    const key = config.getActiveProfileKey();
+    if (!key) throw new Error(NO_DATABASE_ERROR);
+    if (this._pools.has(key)) return this._pools.get(key);
     const { poolSize } = config.getPoolConfig();
-    this._pool = new ConnectionPool(poolSize, async () => {
+    const pool = new ConnectionPool(poolSize, () => runWithProfile(key, async () => {
       const dbType = config.getHanaDatabaseType();
-      logger.info(`Creating new HANA connection (${dbType})...`);
+      logger.info(`Creating new HANA connection [${key}] (${dbType})...`);
       const client = await createHanaClient(config);
-      logger.info('HANA connection established');
+      logger.info(`HANA connection established [${key}]`);
       return client;
-    });
-    return this._pool;
+    }));
+    this._pools.set(key, pool);
+    return pool;
   }
 
   /**
@@ -35,6 +43,9 @@ class ConnectionManager {
    * @returns {Promise<any>}
    */
   async withConnection(fn) {
+    if (config.isMultiDb() && !config.getActiveProfileKey()) {
+      throw new Error(NO_DATABASE_ERROR);
+    }
     if (!config.isHanaConfigured()) {
       throw new Error('HANA configuration is incomplete. Check HANA_HOST, HANA_USER, HANA_PASSWORD.');
     }
@@ -82,6 +93,9 @@ class ConnectionManager {
    * Test the connection (runs SELECT 1 via the pool).
    */
   async testConnection() {
+    if (config.isMultiDb() && !config.getActiveProfileKey()) {
+      return { success: false, error: NO_DATABASE_ERROR };
+    }
     if (!config.isHanaConfigured()) {
       return { success: false, error: 'HANA configuration is incomplete' };
     }
@@ -108,11 +122,11 @@ class ConnectionManager {
    * Drain all pool connections (called on shutdown).
    */
   async disconnect() {
-    if (this._pool) {
-      await this._pool.drain();
-      this._pool = null;
-      logger.info('Connection pool drained');
+    for (const [key, pool] of this._pools) {
+      await pool.drain();
+      logger.info(`Connection pool drained [${key}]`);
     }
+    this._pools.clear();
   }
 
   async resetConnection() {
@@ -123,9 +137,12 @@ class ConnectionManager {
 
   getStatus() {
     const dbType = config.getHanaDatabaseType();
-    const stats = this._pool ? this._pool.getStats() : { poolSize: config.getPoolConfig().poolSize, totalSlots: 0, busySlots: 0, idleSlots: 0, queuedRequests: 0 };
+    const key = config.getActiveProfileKey();
+    const pool = key ? this._pools.get(key) : null;
+    const stats = pool ? pool.getStats() : { poolSize: config.getPoolConfig().poolSize, totalSlots: 0, busySlots: 0, idleSlots: 0, queuedRequests: 0 };
     return {
-      connected: this._pool !== null && stats.totalSlots > 0,
+      database: key,
+      connected: !!pool && stats.totalSlots > 0,
       databaseType: dbType,
       ...stats
     };

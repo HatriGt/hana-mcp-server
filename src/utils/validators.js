@@ -211,14 +211,19 @@ class Validators {
    */
   static validateDmlRestrictions(query, permissions = {}) {
     const upper = query.trimStart().toUpperCase();
+    // In multi-database mode permissions come from the profile, not HANA_ALLOW_*.
+    const hint = (op, envVar) => (permissions.database
+      ? `enable "${op}" in HANA_DATABASES["${permissions.database}"].permissions to permit`
+      : `set ${envVar}=true to permit`);
+    const where = permissions.database ? ` on database "${permissions.database}"` : '';
     if (upper.startsWith('INSERT') && !permissions.allowInsert) {
-      return { valid: false, error: 'INSERT operations are not enabled (set HANA_ALLOW_INSERT=true to permit)' };
+      return { valid: false, error: `INSERT operations are not enabled${where} (${hint('insert', 'HANA_ALLOW_INSERT')})` };
     }
     if (upper.startsWith('UPDATE') && !permissions.allowUpdate) {
-      return { valid: false, error: 'UPDATE operations are not enabled (set HANA_ALLOW_UPDATE=true to permit)' };
+      return { valid: false, error: `UPDATE operations are not enabled${where} (${hint('update', 'HANA_ALLOW_UPDATE')})` };
     }
     if ((upper.startsWith('DELETE') || upper.startsWith('TRUNCATE')) && !permissions.allowDelete) {
-      return { valid: false, error: 'DELETE/TRUNCATE operations are not enabled (set HANA_ALLOW_DELETE=true to permit)' };
+      return { valid: false, error: `DELETE/TRUNCATE operations are not enabled${where} (${hint('delete', 'HANA_ALLOW_DELETE')})` };
     }
     return { valid: true };
   }

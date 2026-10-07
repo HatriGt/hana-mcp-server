@@ -18,7 +18,9 @@ function createSnapshot({ query, parameters }) {
   const ttl = config.getQueryLimits().querySnapshotTtlMs;
   const id = crypto.randomUUID();
   const expiresAt = nowMs() + ttl;
-  snapshots.set(id, { query, parameters: parameters || [], expiresAt });
+  // Bind to the database it was taken from, so a page can't be replayed against another one.
+  const database = config.getActiveProfileKey();
+  snapshots.set(id, { query, parameters: parameters || [], database, expiresAt });
   return id;
 }
 

@@ -17,6 +17,7 @@ const TOOL_IMPLEMENTATIONS = {
   hana_show_config: ConfigTools.showConfig,
   hana_test_connection: ConfigTools.testConnection,
   hana_show_env_vars: ConfigTools.showEnvVars,
+  hana_list_databases: ConfigTools.listDatabases,
   hana_list_schemas: SchemaTools.listSchemas,
   hana_list_tables: TableTools.listTables,
   hana_describe_table: TableTools.describeTable,
@@ -165,6 +166,14 @@ class ToolRegistry {
       return { 
         valid: false, 
         error: `Missing required parameters: ${missing.join(', ')}` 
+      };
+    }
+
+    const dbProp = schema.properties && schema.properties.database;
+    if (dbProp && Array.isArray(dbProp.enum) && args.database !== undefined && !dbProp.enum.includes(args.database)) {
+      return {
+        valid: false,
+        error: `Unknown database "${args.database}". Valid values: ${dbProp.enum.join(', ')}`
       };
     }
 

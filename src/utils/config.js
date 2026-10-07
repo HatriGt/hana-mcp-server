@@ -3,10 +3,162 @@
  */
 
 const { logger } = require('./logger');
+const { getActiveProfileKey, runWithProfile } = require('../database/db-context');
+
+const PROFILE_KEY_RE = /^[A-Za-z0-9_-]{1,64}$/;
+const DEFAULT_PROFILE_KEY = 'default';
+
+function clampInt(raw, fallback, min, max) {
+  const n = parseInt(raw, 10);
+  const v = Number.isFinite(n) ? n : fallback;
+  return Math.min(Math.max(v, min), max);
+}
+
+/** Per-profile overrides for query limits; unset keys fall back to the global value. */
+function parseLimitOverrides(raw, key) {
+  if (raw == null) return {};
+  if (typeof raw !== 'object' || Array.isArray(raw)) {
+    throw new Error(`HANA_DATABASES["${key}"].limits must be an object`);
+  }
+  const o = {};
+  if (raw.queryLimitsEnabled != null) o.queryLimitsEnabled = raw.queryLimitsEnabled === true || raw.queryLimitsEnabled === 'true';
+  if (raw.queryTimeoutMs != null) o.queryTimeoutMs = Math.max(parseInt(raw.queryTimeoutMs, 10) || 0, 0);
+  if (raw.maxResultRows != null) o.maxResultRows = clampInt(raw.maxResultRows, 50, 1, 10000);
+  if (raw.maxResultCols != null) o.maxResultCols = clampInt(raw.maxResultCols, 50, 1, 500);
+  if (raw.maxCellChars != null) o.maxCellChars = clampInt(raw.maxCellChars, 200, 1, 10000);
+  if (raw.listDefaultLimit != null) o.listDefaultLimit = clampInt(raw.listDefaultLimit, 200, 1, 5000);
+  // Setting a result cap on a profile switches query limits on for it, unless explicitly disabled.
+  const setsCap = ['maxResultRows', 'maxResultCols', 'maxCellChars'].some((k) => o[k] !== undefined);
+  if (setsCap && o.queryLimitsEnabled === undefined) o.queryLimitsEnabled = true;
+  return o;
+}
+
+function parseProfile(key, raw) {
+  if (!PROFILE_KEY_RE.test(key)) {
+    throw new Error(`HANA_DATABASES key "${key}" is invalid (use letters, digits, _ or -; max 64)`);
+  }
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    throw new Error(`HANA_DATABASES["${key}"] must be an object`);
+  }
+  const missing = ['host', 'user', 'password'].filter((f) => !raw[f]);
+  if (missing.length) {
+    throw new Error(`HANA_DATABASES["${key}"] is missing: ${missing.join(', ')}`);
+  }
+  const perms = raw.permissions || {};
+  return {
+    key,
+    hana: {
+      host: String(raw.host),
+      port: parseInt(raw.port, 10) || 443,
+      user: String(raw.user),
+      password: String(raw.password),
+      schema: raw.schema,
+      instanceNumber: raw.instanceNumber != null ? String(raw.instanceNumber) : undefined,
+      databaseName: raw.databaseName,
+      connectionType: raw.connectionType || 'auto',
+      ssl: raw.ssl !== false,
+      encrypt: raw.encrypt !== false,
+      validateCert: raw.validateCert !== false
+    },
+    permissions: {
+      insert: perms.insert === true,
+      update: perms.update === true,
+      delete: perms.delete === true
+    },
+    limits: parseLimitOverrides(raw.limits, key)
+  };
+}
 
 class Config {
   constructor() {
     this.config = this.loadConfig();
+    this.loadProfiles();
+  }
+
+  /**
+   * Build the database profile registry.
+   * HANA_DATABASES (JSON) => multi-database mode; `database` is required on every DB tool call.
+   * Otherwise a single implicit "default" profile is built from the flat HANA_* vars.
+   */
+  loadProfiles() {
+    const raw = process.env.HANA_DATABASES;
+    this.profiles = new Map();
+    this.multiDb = false;
+
+    if (raw && raw.trim()) {
+      let parsed;
+      try {
+        parsed = JSON.parse(raw);
+      } catch (e) {
+        throw new Error(`HANA_DATABASES is not valid JSON: ${e.message}`);
+      }
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || !Object.keys(parsed).length) {
+        throw new Error('HANA_DATABASES must be a non-empty JSON object of { "<name>": { ...profile } }');
+      }
+      for (const [key, value] of Object.entries(parsed)) {
+        this.profiles.set(key, parseProfile(key, value));
+      }
+      this.multiDb = true;
+      logger.info(`Multi-database mode: ${this.profiles.size} profile(s): ${[...this.profiles.keys()].join(', ')}`);
+      return;
+    }
+
+    const s = this.config.server;
+    this.profiles.set(DEFAULT_PROFILE_KEY, {
+      key: DEFAULT_PROFILE_KEY,
+      hana: this.config.hana,
+      permissions: { insert: s.allowInsert, update: s.allowUpdate, delete: s.allowDelete },
+      limits: {}
+    });
+  }
+
+  isMultiDb() {
+    return this.multiDb;
+  }
+
+  getProfileKeys() {
+    return [...this.profiles.keys()];
+  }
+
+  hasProfile(key) {
+    return typeof key === 'string' && this.profiles.has(key);
+  }
+
+  /** Key of the profile in effect: request-scoped key, or "default" in single-database mode. */
+  getActiveProfileKey() {
+    const key = getActiveProfileKey();
+    if (key && this.profiles.has(key)) return key;
+    return this.multiDb ? null : DEFAULT_PROFILE_KEY;
+  }
+
+  getActiveProfile() {
+    const key = this.getActiveProfileKey();
+    return key ? this.profiles.get(key) : null;
+  }
+
+  /** HANA connection settings for the active profile ({} when none is selected). */
+  _hana() {
+    const p = this.getActiveProfile();
+    return p ? p.hana : {};
+  }
+
+  /** Non-secret description of every profile (for hana_list_databases). */
+  getProfileSummaries() {
+    return [...this.profiles.values()].map((p) => ({
+      database: p.key,
+      host: p.hana.host,
+      port: p.hana.port,
+      databaseName: p.hana.databaseName || null,
+      schema: p.hana.schema || null,
+      connectionType: p.hana.connectionType,
+      permissions: { read: true, ...p.permissions },
+      limits: { ...this._mergedLimits(p) }
+    }));
+  }
+
+  /** All profile passwords, for redaction. */
+  getAllSecrets() {
+    return [...this.profiles.values()].map((p) => p.hana.password).filter(Boolean);
   }
 
   loadConfig() {
@@ -74,7 +226,7 @@ class Config {
   }
 
   getHanaConfig() {
-    return this.config.hana;
+    return this._hana();
   }
 
   getServerConfig() {
@@ -82,22 +234,40 @@ class Config {
   }
 
   /** Limits for user-facing query tools (not internal metadata queries). */
+  /** Global limits overlaid with a profile's overrides. */
+  _mergedLimits(profile) {
+    const s = this.config.server;
+    const o = (profile && profile.limits) || {};
+    const pick = (k, g) => (o[k] !== undefined ? o[k] : g);
+    return {
+      queryLimitsEnabled: pick('queryLimitsEnabled', s.queryLimitsEnabled),
+      queryTimeoutMs: pick('queryTimeoutMs', s.queryTimeoutMs),
+      maxResultRows: pick('maxResultRows', s.maxResultRows),
+      maxResultCols: pick('maxResultCols', s.maxResultCols),
+      maxCellChars: pick('maxCellChars', s.maxCellChars),
+      listDefaultLimit: pick('listDefaultLimit', s.listDefaultLimit)
+    };
+  }
+
+  /**
+   * Limits for the active profile. Write permissions come from the profile;
+   * caps/timeouts are global unless the profile overrides them.
+   * With no active profile, writes are denied.
+   */
   getQueryLimits() {
     const s = this.config.server;
+    const profile = this.getActiveProfile();
+    const perms = profile ? profile.permissions : { insert: false, update: false, delete: false };
     return {
-      queryLimitsEnabled: s.queryLimitsEnabled,
-      queryTimeoutMs: s.queryTimeoutMs,
-      maxResultRows: s.maxResultRows,
-      maxResultCols: s.maxResultCols,
-      maxCellChars: s.maxCellChars,
+      ...this._mergedLimits(profile),
       defaultOffset: s.queryDefaultOffset,
-      listDefaultLimit: s.listDefaultLimit,
       resourceListMaxItems: s.resourceListMaxItems,
       semanticsTtlMs: s.semanticsTtlMs,
       querySnapshotTtlMs: s.querySnapshotTtlMs,
-      allowInsert: s.allowInsert,
-      allowUpdate: s.allowUpdate,
-      allowDelete: s.allowDelete
+      allowInsert: perms.insert,
+      allowUpdate: perms.update,
+      allowDelete: perms.delete,
+      database: this.multiDb && profile ? profile.key : undefined
     };
   }
 
@@ -119,7 +289,7 @@ class Config {
    * Determine HANA database type based on configuration
    */
   getHanaDatabaseType() {
-    const hana = this.config.hana;
+    const hana = this._hana();
     
     // Use explicit type if set and not 'auto'
     if (hana.connectionType && hana.connectionType !== 'auto') {
@@ -140,7 +310,7 @@ class Config {
    * Build connection parameters based on database type
    */
   getConnectionParams() {
-    const hana = this.config.hana;
+    const hana = this._hana();
     const dbType = this.getHanaDatabaseType();
     
     const baseParams = {
@@ -172,21 +342,23 @@ class Config {
   }
 
   isHanaConfigured() {
-    const hana = this.config.hana;
+    const hana = this._hana();
     return !!(hana.host && hana.user && hana.password);
   }
 
   getHanaConnectionString() {
-    const hana = this.config.hana;
+    const hana = this._hana();
     return `${hana.host}:${hana.port}`;
   }
 
   // Get configuration info for display (hiding sensitive data)
   getDisplayConfig() {
-    const hana = this.config.hana;
+    const hana = this._hana();
     const dbType = this.getHanaDatabaseType();
     
+    const profile = this.getActiveProfile();
     return {
+      ...(this.multiDb ? { database: profile ? profile.key : 'NOT SELECTED' } : {}),
       databaseType: dbType,
       connectionType: hana.connectionType,
       host: hana.host || 'NOT SET',
@@ -198,7 +370,8 @@ class Config {
       databaseName: hana.databaseName || 'NOT SET',
       ssl: hana.ssl,
       encrypt: hana.encrypt,
-      validateCert: hana.validateCert
+      validateCert: hana.validateCert,
+      ...(profile ? { permissions: { read: true, ...profile.permissions } } : {})
     };
   }
 
@@ -223,13 +396,23 @@ class Config {
       HANA_AUDIT_LOG_FILE: process.env.HANA_AUDIT_LOG_FILE || 'NOT SET',
       HANA_ALLOW_INSERT: process.env.HANA_ALLOW_INSERT || 'NOT SET',
       HANA_ALLOW_UPDATE: process.env.HANA_ALLOW_UPDATE || 'NOT SET',
-      HANA_ALLOW_DELETE: process.env.HANA_ALLOW_DELETE || 'NOT SET'
+      HANA_ALLOW_DELETE: process.env.HANA_ALLOW_DELETE || 'NOT SET',
+      // Never echo the JSON: it contains passwords.
+      HANA_DATABASES: this.multiDb ? `SET (${this.profiles.size} profiles: ${this.getProfileKeys().join(', ')})` : 'NOT SET'
     };
   }
 
   // Validate configuration
   validate() {
-    const hana = this.config.hana;
+    // Multi-database mode at startup: validate every profile.
+    if (this.multiDb && !getActiveProfileKey()) {
+      let ok = true;
+      for (const key of this.profiles.keys()) {
+        ok = runWithProfile(key, () => this.validate()) && ok;
+      }
+      return ok;
+    }
+    const hana = this._hana();
     const errors = [];
     const dbType = this.getHanaDatabaseType();
 
@@ -253,7 +436,8 @@ class Config {
     }
 
     if (errors.length > 0) {
-      logger.warn('Configuration validation failed:', errors);
+      const tag = this.multiDb ? ` [database ${this.getActiveProfileKey()}]` : '';
+      logger.warn(`Configuration validation failed${tag}:`, errors);
       return false;
     }
 
@@ -265,14 +449,14 @@ class Config {
    * Get default schema from environment variables
    */
   getDefaultSchema() {
-    return this.config.hana.schema;
+    return this._hana().schema;
   }
 
   /**
    * Check if default schema is configured
    */
   hasDefaultSchema() {
-    return !!this.config.hana.schema;
+    return !!this._hana().schema;
   }
 
   /**

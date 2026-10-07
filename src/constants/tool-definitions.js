@@ -742,12 +742,57 @@ const TOOLS = [
       },
       required: []
     }
+  },
+  {
+    name: 'hana_list_databases',
+    title: 'List database profiles',
+    description: 'List the database profiles this server can connect to, with each one\'s target and read/insert/update/delete permissions. Use a returned "database" value as the database parameter on other tools.',
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    },
+    inputSchema: {
+      type: 'object',
+      properties: {},
+      required: []
+    }
   }
 ];
 
 // Tool categories for organization
+/** Tools that never open a database connection; they take no `database` parameter. */
+const DB_FREE_TOOLS = new Set(['hana_show_env_vars', 'hana_list_databases']);
+
+/**
+ * Multi-database mode (HANA_DATABASES set): every DB tool gets a required `database`
+ * parameter whose enum is the configured profile keys.
+ */
+function applyDatabaseParameter(tools) {
+  // Lazy require: config must not be a hard dependency of plain schema consumers.
+  const { config } = require('../utils/config');
+  if (!config.isMultiDb()) return;
+  const keys = config.getProfileKeys();
+  for (const tool of tools) {
+    if (DB_FREE_TOOLS.has(tool.name)) continue;
+    const schema = tool.inputSchema || (tool.inputSchema = { type: 'object', properties: {}, required: [] });
+    schema.properties = {
+      database: {
+        type: 'string',
+        enum: keys,
+        description: `Required. Which HANA database to run against: one of ${keys.join(', ')}. Call hana_list_databases for targets and permissions. If the user has not said which database, ask rather than guess.`
+      },
+      ...(schema.properties || {})
+    };
+    schema.required = ['database', ...(schema.required || []).filter((r) => r !== 'database')];
+  }
+}
+
+applyDatabaseParameter(TOOLS);
+
 const TOOL_CATEGORIES = {
-  CONFIGURATION: ['hana_show_config', 'hana_test_connection', 'hana_show_env_vars'],
+  CONFIGURATION: ['hana_show_config', 'hana_test_connection', 'hana_show_env_vars', 'hana_list_databases'],
   SCHEMA: ['hana_list_schemas'],
   TABLE: ['hana_list_tables', 'hana_describe_table', 'hana_explain_table'],
   INDEX: ['hana_list_indexes', 'hana_describe_index'],
@@ -782,6 +827,7 @@ function getAllToolNames() {
 
 module.exports = {
   TOOLS,
+  DB_FREE_TOOLS,
   TOOL_CATEGORIES,
   getTool,
   getToolsByCategory,
